@@ -1,0 +1,708 @@
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const path = require('path');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
+
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.static('public'));
+
+// Game state
+const pokerRooms = new Map();
+const blackjackRooms = new Map();
+const players = new Map();
+
+// Card deck utilities
+const suits = ['♠', '♥', '♦', '♣'];
+const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+function createDeck() {
+    const deck = [];
+    for (let suit of suits) {
+        for (let rank of ranks) {
+            deck.push({ rank, suit, value: getCardValue(rank) });
+        }
+    }
+    return shuffleDeck(deck);
+}
+
+function shuffleDeck(deck) {
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+}
+
+function getCardValue(rank) {
+    if (rank === 'A') return 11;
+    if (['K', 'Q', 'J'].includes(rank)) return 10;
+    return parseInt(rank);
+}
+
+function calculateBlackjackScore(hand) {
+    let score = 0;
+    let aces = 0;
+    
+    for (let card of hand) {
+        score += card.value;
+        if (card.rank === 'A') aces++;
+    }
+    
+    while (score > 21 && aces > 0) {
+        score -= 10;
+        aces--;
+    }
+    
+    return score;
+}
+
+// Poker hand evaluation
+function evaluatePokerHand(cards) {
+    // Simplified poker hand evaluation
+    const ranks = cards.map(c => c.rank);
+    const suits = cards.map(c => c.suit);
+    
+    const rankCounts = {};
+    ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
+    const counts = Object.values(rankCounts).sort((a, b) => b - a);
+    
+    const isFlush = suits.every(s => s === suits[0]);
+    const uniqueRanks = [...new Set(ranks)].length;
+    
+    if (counts[0] === 4) return { rank: 7, name: 'Four of a Kind' };
+    if (counts[0] === 3 && counts[1] === 2) return { rank: 6, name: 'Full House' };
+    if (isFlush) return { rank: 5, name: 'Flush' };
+    if (counts[0] === 3) return { rank: 3, name: 'Three of a Kind' };
+    if (counts[0] === 2 && counts[1] === 2) return { rank: 2, name: 'Two Pair' };
+    if (counts[0] === 2) return { rank: 1, name: 'Pair' };
+    
+    return { rank: 0, name: 'High Card' };
+}
+
+// Bot utilities
+const botNames = ['Alice Bot', 'Bob Bot', 'Charlie Bot', 'Diana Bot', 'Eve Bot', 'Frank Bot'];
+let botCounter = 0;
+
+function generateBotId() {
+    return `bot_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function getBotName() {
+    const name = botNames[botCounter % botNames.length];
+    botCounter++;
+    return name;
+}
+
+function makeBotPokerDecision(room, botPlayer) {
+    const currentBet = room.currentBet;
+    const betDiff = currentBet - botPlayer.bet;
+    
+    // Simple AI logic
+    const handStrength = evaluatePokerHand([...botPlayer.hand, ...room.communityCards]).rank;
+    const randomFactor = Math.random();
+    
+    if (handStrength >= 5 || (handStrength >= 3 && randomFactor > 0.5)) {
+        // Strong hand - raise
+        const raiseAmount = currentBet + Math.floor(Math.random() * 50) + 20;
+        return { action: 'raise', amount: raiseAmount };
+    } else if (handStrength >= 1 || (randomFactor > 0.6)) {
+        // Decent hand - call
+        return { action: 'call' };
+    } else {
+        // Weak hand - fold if bet is high, otherwise call
+        return betDiff > 50 ? { action: 'fold' } : { action: 'call' };
+    }
+}
+
+function makeBotBlackjackDecision(botPlayer, dealerUpCard) {
+    const score = botPlayer.score;
+    const dealerValue = dealerUpCard.value;
+    
+    // Basic blackjack strategy
+    if (score < 12) return 'hit';
+    if (score >= 17) return 'stand';
+    if (score >= 13 && score <= 16 && dealerValue <= 6) return 'stand';
+    return 'hit';
+}
+
+function addBotToPokerRoom(roomId) {
+    const room = pokerRooms.get(roomId);
+    if (!room || room.players.length >= 6) return null;
+    
+    const botId = generateBotId();
+    const bot = {
+        id: botId,
+        name: getBotName(),
+        chips: 1000,
+        hand: [],
+        bet: 0,
+        folded: false,
+        isBot: true
+    };
+    
+    room.players.push(bot);
+    return bot;
+}
+
+function addBotToBlackjackRoom(roomId) {
+    const room = blackjackRooms.get(roomId);
+    if (!room || room.players.length >= 5) return null;
+    
+    const botId = generateBotId();
+    const bot = {
+        id: botId,
+        name: getBotName(),
+        chips: 1000,
+        hand: [],
+        bet: 0,
+        score: 0,
+        standing: false,
+        isBot: true
+    };
+    
+    room.players.push(bot);
+    return bot;
+}
+
+function processBotPokerTurn(room, roomId) {
+    const currentPlayer = room.players[room.currentPlayerIndex];
+    
+    if (!currentPlayer.isBot || currentPlayer.folded) return;
+    
+    setTimeout(() => {
+        const decision = makeBotPokerDecision(room, currentPlayer);
+        
+        if (decision.action === 'fold') {
+            currentPlayer.folded = true;
+        } else if (decision.action === 'call') {
+            const callAmount = room.currentBet - currentPlayer.bet;
+            currentPlayer.chips -= callAmount;
+            currentPlayer.bet += callAmount;
+            room.pot += callAmount;
+        } else if (decision.action === 'raise') {
+            const raiseAmount = decision.amount - currentPlayer.bet;
+            currentPlayer.chips -= raiseAmount;
+            currentPlayer.bet = decision.amount;
+            room.pot += raiseAmount;
+            room.currentBet = decision.amount;
+        }
+        
+        // Move to next player
+        room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        
+        // Check if round is over
+        const activePlayers = room.players.filter(p => !p.folded);
+        if (activePlayers.length === 1) {
+            const winner = activePlayers[0];
+            winner.chips += room.pot;
+            io.to(roomId).emit('gameEnd', {
+                winner: winner.name,
+                pot: room.pot
+            });
+            room.gameStarted = false;
+        } else if (room.players.every(p => p.folded || p.bet === room.currentBet)) {
+            advancePokerRound(room, roomId);
+        } else {
+            io.to(roomId).emit('gameUpdate', { room });
+            processBotPokerTurn(room, roomId);
+        }
+    }, 1500);
+}
+
+function processBotBlackjackTurns(room, roomId, dealerUpCard) {
+    const bots = room.players.filter(p => p.isBot && p.bet > 0 && !p.standing);
+    
+    bots.forEach((bot, index) => {
+        setTimeout(() => {
+            while (!bot.standing && bot.score < 21) {
+                const decision = makeBotBlackjackDecision(bot, dealerUpCard);
+                
+                if (decision === 'hit') {
+                    bot.hand.push(room.deck.pop());
+                    bot.score = calculateBlackjackScore(bot.hand);
+                    
+                    if (bot.score >= 21) {
+                        bot.standing = true;
+                    }
+                } else {
+                    bot.standing = true;
+                }
+                
+                io.to(roomId).emit('playerUpdate', { player: bot });
+            }
+            
+            // Check if all players are done
+            if (room.players.every(p => p.standing || p.bet === 0)) {
+                setTimeout(() => resolveBlackjackRound(room, roomId), 1000);
+            }
+        }, index * 2000);
+    });
+}
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
+    
+    players.set(socket.id, {
+        id: socket.id,
+        name: '',
+        chips: 1000,
+        currentRoom: null
+    });
+    
+    // Join game room
+    socket.on('joinRoom', ({ roomId, game, playerName }) => {
+        const player = players.get(socket.id);
+        player.name = playerName || `Player ${socket.id.slice(0, 4)}`;
+        
+        socket.join(roomId);
+        player.currentRoom = roomId;
+        
+        if (game === 'poker') {
+            if (!pokerRooms.has(roomId)) {
+                pokerRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    deck: createDeck(),
+                    communityCards: [],
+                    pot: 0,
+                    currentBet: 0,
+                    currentPlayerIndex: 0,
+                    gameStarted: false,
+                    round: 'preflop'
+                });
+            }
+            
+            const room = pokerRooms.get(roomId);
+            if (room.players.length < 6) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    chips: player.chips,
+                    hand: [],
+                    bet: 0,
+                    folded: false
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    room: room,
+                    message: `${player.name} joined the table`
+                });
+            }
+        } else if (game === 'blackjack') {
+            if (!blackjackRooms.has(roomId)) {
+                blackjackRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    dealer: { hand: [], score: 0 },
+                    deck: createDeck(),
+                    gameStarted: false
+                });
+            }
+            
+            const room = blackjackRooms.get(roomId);
+            if (room.players.length < 5) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    chips: player.chips,
+                    hand: [],
+                    bet: 0,
+                    score: 0,
+                    standing: false
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    room: room,
+                    message: `${player.name} joined the table`
+                });
+            }
+        }
+    });
+    
+    // Add bot to room
+    socket.on('addBot', ({ roomId, game }) => {
+        let bot = null;
+        
+        if (game === 'poker') {
+            const room = pokerRooms.get(roomId);
+            if (!room) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+            bot = addBotToPokerRoom(roomId);
+            if (bot) {
+                io.to(roomId).emit('roomUpdate', {
+                    room: pokerRooms.get(roomId),
+                    message: `${bot.name} joined the table`
+                });
+            } else {
+                socket.emit('error', { message: 'Cannot add more bots (max 6 players)' });
+            }
+        } else if (game === 'blackjack') {
+            const room = blackjackRooms.get(roomId);
+            if (!room) {
+                socket.emit('error', { message: 'Room not found' });
+                return;
+            }
+            bot = addBotToBlackjackRoom(roomId);
+            if (bot) {
+                io.to(roomId).emit('roomUpdate', {
+                    room: blackjackRooms.get(roomId),
+                    message: `${bot.name} joined the table`
+                });
+            } else {
+                socket.emit('error', { message: 'Cannot add more bots (max 5 players)' });
+            }
+        }
+    });
+    
+    // Start poker game
+    socket.on('startPoker', (roomId) => {
+        const room = pokerRooms.get(roomId);
+        if (!room || room.gameStarted || room.players.length < 2) return;
+        
+        room.gameStarted = true;
+        room.deck = createDeck();
+        room.communityCards = [];
+        room.pot = 0;
+        room.currentBet = 10;
+        room.currentPlayerIndex = 0;
+        room.round = 'preflop';
+        
+        // Deal cards
+        room.players.forEach(player => {
+            player.hand = [room.deck.pop(), room.deck.pop()];
+            player.bet = 0;
+            player.folded = false;
+        });
+        
+        // Small and big blind
+        room.players[0].chips -= 5;
+        room.players[0].bet = 5;
+        room.pot += 5;
+        
+        room.players[1].chips -= 10;
+        room.players[1].bet = 10;
+        room.pot += 10;
+        
+        room.players.forEach(player => {
+            if (!player.isBot) {
+                io.to(player.id).emit('dealCards', { hand: player.hand });
+            }
+        });
+        
+        io.to(roomId).emit('gameStart', { room });
+        
+        // Start bot turns if first player is bot
+        if (room.players[room.currentPlayerIndex].isBot) {
+            processBotPokerTurn(room, roomId);
+        }
+    });
+    
+    // Reset poker game
+    socket.on('resetPoker', (roomId) => {
+        const room = pokerRooms.get(roomId);
+        if (room) {
+            resetPokerGame(room, roomId);
+        }
+    });
+    
+    // Poker actions
+    socket.on('pokerAction', ({ roomId, action, amount }) => {
+        const room = pokerRooms.get(roomId);
+        if (!room || !room.gameStarted) return;
+        
+        const player = room.players[room.currentPlayerIndex];
+        if (player.id !== socket.id) return;
+        
+        if (action === 'fold') {
+            player.folded = true;
+        } else if (action === 'call') {
+            const callAmount = room.currentBet - player.bet;
+            player.chips -= callAmount;
+            player.bet += callAmount;
+            room.pot += callAmount;
+        } else if (action === 'raise') {
+            const raiseAmount = amount || room.currentBet * 2;
+            const totalAmount = raiseAmount - player.bet;
+            player.chips -= totalAmount;
+            player.bet = raiseAmount;
+            room.pot += totalAmount;
+            room.currentBet = raiseAmount;
+        }
+        
+        // Move to next player
+        room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        
+        // Check if round is over
+        const activePlayers = room.players.filter(p => !p.folded);
+        if (activePlayers.length === 1) {
+            // Winner by fold
+            const winner = activePlayers[0];
+            winner.chips += room.pot;
+            io.to(roomId).emit('gameEnd', {
+                winner: winner.name,
+                pot: room.pot
+            });
+            room.gameStarted = false;
+        } else if (room.players.every(p => p.folded || p.bet === room.currentBet)) {
+            // Move to next round
+            advancePokerRound(room, roomId);
+        } else {
+            // Check if next player is bot
+            if (room.players[room.currentPlayerIndex].isBot) {
+                processBotPokerTurn(room, roomId);
+            }
+        }
+        
+        io.to(roomId).emit('gameUpdate', { room });
+    });
+    
+    // Start blackjack game
+    socket.on('startBlackjack', (roomId) => {
+        const room = blackjackRooms.get(roomId);
+        if (!room || room.gameStarted) return;
+        
+        room.gameStarted = true;
+        room.deck = createDeck();
+        room.dealer.hand = [room.deck.pop(), room.deck.pop()];
+        room.dealer.score = calculateBlackjackScore(room.dealer.hand);
+        
+        // Bots place random bets
+        room.players.forEach(player => {
+            if (player.isBot && player.bet === 0) {
+                const botBet = Math.floor(Math.random() * 200) + 50;
+                player.bet = Math.min(botBet, player.chips);
+                player.chips -= player.bet;
+            }
+        });
+        
+        room.players.forEach(player => {
+            if (player.bet > 0) {
+                player.hand = [room.deck.pop(), room.deck.pop()];
+                player.score = calculateBlackjackScore(player.hand);
+                player.standing = false;
+            }
+        });
+        
+        io.to(roomId).emit('blackjackStart', {
+            room,
+            dealerCard: room.dealer.hand[0]
+        });
+        
+        // Start bot turns
+        setTimeout(() => {
+            processBotBlackjackTurns(room, roomId, room.dealer.hand[0]);
+        }, 1000);
+    });
+    
+    // Blackjack bet
+    socket.on('placeBet', ({ roomId, amount }) => {
+        const room = blackjackRooms.get(roomId);
+        if (!room) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && player.chips >= amount) {
+            player.bet = amount;
+            player.chips -= amount;
+            io.to(roomId).emit('roomUpdate', { room });
+        }
+    });
+    
+    // Blackjack hit
+    socket.on('hit', (roomId) => {
+        const room = blackjackRooms.get(roomId);
+        if (!room || !room.gameStarted) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && !player.standing) {
+            player.hand.push(room.deck.pop());
+            player.score = calculateBlackjackScore(player.hand);
+            
+            if (player.score > 21) {
+                player.standing = true;
+                io.to(socket.id).emit('bust', { score: player.score });
+            }
+            
+            io.to(roomId).emit('playerUpdate', { player });
+        }
+    });
+    
+    // Blackjack stand
+    socket.on('stand', (roomId) => {
+        const room = blackjackRooms.get(roomId);
+        if (!room || !room.gameStarted) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.standing = true;
+            
+            // Check if all players are standing
+            if (room.players.every(p => p.standing || p.bet === 0)) {
+                resolveBlackjackRound(room, roomId);
+            }
+            
+            io.to(roomId).emit('playerUpdate', { player });
+        }
+    });
+    
+    // Reset blackjack game
+    socket.on('resetBlackjack', (roomId) => {
+        const room = blackjackRooms.get(roomId);
+        if (room) {
+            resetBlackjackGame(room, roomId);
+        }
+    });
+    
+    // Disconnect
+    socket.on('disconnect', () => {
+        console.log('Client disconnected:', socket.id);
+        
+        const player = players.get(socket.id);
+        if (player && player.currentRoom) {
+            const roomId = player.currentRoom;
+            
+            // Remove from poker room
+            if (pokerRooms.has(roomId)) {
+                const room = pokerRooms.get(roomId);
+                room.players = room.players.filter(p => p.id !== socket.id);
+                io.to(roomId).emit('roomUpdate', {
+                    room,
+                    message: `${player.name} left the table`
+                });
+            }
+            
+            // Remove from blackjack room
+            if (blackjackRooms.has(roomId)) {
+                const room = blackjackRooms.get(roomId);
+                room.players = room.players.filter(p => p.id !== socket.id);
+                io.to(roomId).emit('roomUpdate', {
+                    room,
+                    message: `${player.name} left the table`
+                });
+            }
+        }
+        
+        players.delete(socket.id);
+    });
+});
+
+function advancePokerRound(room, roomId) {
+    if (room.round === 'preflop') {
+        room.round = 'flop';
+        room.communityCards = [room.deck.pop(), room.deck.pop(), room.deck.pop()];
+    } else if (room.round === 'flop') {
+        room.round = 'turn';
+        room.communityCards.push(room.deck.pop());
+    } else if (room.round === 'turn') {
+        room.round = 'river';
+        room.communityCards.push(room.deck.pop());
+    } else if (room.round === 'river') {
+        // Showdown
+        const activePlayers = room.players.filter(p => !p.folded);
+        let bestPlayer = activePlayers[0];
+        let bestHand = evaluatePokerHand([...bestPlayer.hand, ...room.communityCards]);
+        
+        activePlayers.forEach(player => {
+            const hand = evaluatePokerHand([...player.hand, ...room.communityCards]);
+            if (hand.rank > bestHand.rank) {
+                bestPlayer = player;
+                bestHand = hand;
+            }
+        });
+        
+        bestPlayer.chips += room.pot;
+        io.to(roomId).emit('gameEnd', {
+            winner: bestPlayer.name,
+            hand: bestHand.name,
+            pot: room.pot
+        });
+        
+        room.gameStarted = false;
+        return;
+    }
+    
+    room.currentBet = 0;
+    room.players.forEach(p => p.bet = 0);
+    room.currentPlayerIndex = 0;
+    
+    io.to(roomId).emit('roundAdvance', { room });
+}
+
+function resolveBlackjackRound(room, roomId) {
+    // Dealer draws
+    while (room.dealer.score < 17) {
+        room.dealer.hand.push(room.deck.pop());
+        room.dealer.score = calculateBlackjackScore(room.dealer.hand);
+    }
+    
+    // Resolve each player
+    room.players.forEach(player => {
+        if (player.bet === 0) return;
+        
+        if (player.score > 21) {
+            // Player bust
+            player.result = 'Bust';
+        } else if (room.dealer.score > 21 || player.score > room.dealer.score) {
+            // Player wins
+            player.chips += player.bet * 2;
+            player.result = 'Win';
+        } else if (player.score === room.dealer.score) {
+            // Push
+            player.chips += player.bet;
+            player.result = 'Push';
+        } else {
+            // Dealer wins
+            player.result = 'Loss';
+        }
+        
+        player.bet = 0;
+    });
+    
+    io.to(roomId).emit('blackjackEnd', {
+        room,
+        dealerHand: room.dealer.hand,
+        dealerScore: room.dealer.score
+    });
+    
+    room.gameStarted = false;
+}
+
+// Payment endpoint
+app.post('/api/create-payment-intent', async (req, res) => {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    
+    try {
+        const { amount } = req.body;
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount * 100, // Convert to cents
+            currency: 'usd',
+            automatic_payment_methods: {
+                enabled: true,
+            },
+        });
+        
+        res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Routes
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
