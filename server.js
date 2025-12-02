@@ -630,20 +630,25 @@ io.on('connection', (socket) => {
             player.folded = true;
         } else if (action === 'call') {
             const callAmount = room.currentBet - player.bet;
+            if (callAmount < 0 || player.chips < callAmount) return;
             player.chips -= callAmount;
             player.bet += callAmount;
             room.pot += callAmount;
         } else if (action === 'raise') {
-            const raiseAmount = amount || room.currentBet * 2;
+            if (!amount || amount < 10) return;
+            const raiseAmount = amount;
             const totalAmount = raiseAmount - player.bet;
+            if (totalAmount < 0 || player.chips < totalAmount) return;
             player.chips -= totalAmount;
             player.bet = raiseAmount;
             room.pot += totalAmount;
             room.currentBet = raiseAmount;
         }
         
-        // Move to next player
-        room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        // Move to next player (skip folded players)
+        do {
+            room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        } while (room.players[room.currentPlayerIndex].folded && room.players.filter(p => !p.folded).length > 1);
         
         // Check if round is over
         const activePlayers = room.players.filter(p => !p.folded);

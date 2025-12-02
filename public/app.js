@@ -65,6 +65,10 @@ function initializeEventListeners() {
     
     document.getElementById('raiseBtn').addEventListener('click', () => {
         const amount = parseInt(document.getElementById('raiseAmount').value) || 0;
+        if (amount < 10) {
+            showMessage('Minimum raise is $10', 'error');
+            return;
+        }
         socket.emit('pokerAction', { roomId: currentRoom, action: 'raise', amount });
     });
     
@@ -81,11 +85,15 @@ function initializeEventListeners() {
     document.getElementById('leaveBlackjackBtn').addEventListener('click', () => leaveGame());
     document.getElementById('placeBetBtn').addEventListener('click', () => {
         const amount = parseInt(document.getElementById('betAmount').value) || 0;
-        if (amount > 0 && amount <= playerChips) {
-            socket.emit('placeBet', { roomId: currentRoom, amount });
-        } else {
-            showMessage('Invalid bet amount', 'error');
+        if (amount <= 0) {
+            showMessage('Bet must be positive', 'error');
+            return;
         }
+        if (amount > playerChips) {
+            showMessage('Not enough chips', 'error');
+            return;
+        }
+        socket.emit('placeBet', { roomId: currentRoom, amount });
     });
     
     document.getElementById('startBlackjackBtn').addEventListener('click', () => {
