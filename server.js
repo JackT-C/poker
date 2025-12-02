@@ -715,12 +715,21 @@ io.on('connection', (socket) => {
             }
             
             const room = fpsRooms.get(roomId);
-            if (room.players.length < 2) {
+            if (room.players.length < 4) {
+                // Set spawn positions for up to 4 players
+                const spawnPositions = [
+                    { x: 100, y: 100 },
+                    { x: 700, y: 500 },
+                    { x: 700, y: 100 },
+                    { x: 100, y: 500 }
+                ];
+                const spawnPos = spawnPositions[room.players.length];
+                
                 room.players.push({
                     id: socket.id,
                     name: player.name,
-                    x: 100,
-                    y: 100,
+                    x: spawnPos.x,
+                    y: spawnPos.y,
                     angle: 0,
                     health: 100,
                     kills: 0,
@@ -1452,9 +1461,10 @@ function updateFPSGame(room, roomId) {
             return false;
         }
         
-        // Check hit on opponent
-        const opponent = room.players.find(p => p.id !== bullet.shooter);
-        if (opponent) {
+        // Check hit on any opponent
+        for (let opponent of room.players) {
+            if (opponent.id === bullet.shooter) continue;
+            
             const dx = bullet.x - opponent.x;
             const dy = bullet.y - opponent.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1488,12 +1498,17 @@ function updateFPSGame(room, roomId) {
     
     // Emit state
     room.players.forEach(player => {
-        const opponent = room.players.find(p => p.id !== player.id);
+        const opponents = room.players.filter(p => p.id !== player.id).map(p => ({
+            id: p.id,
+            x: p.x,
+            y: p.y,
+            angle: p.angle,
+            health: p.health,
+            name: p.name
+        }));
+        
         io.to(player.id).emit('fpsUpdate', {
-            opponentX: opponent.x,
-            opponentY: opponent.y,
-            opponentAngle: opponent.angle,
-            opponentHealth: opponent.health,
+            opponents: opponents,
             playerHealth: player.health,
             playerKills: player.kills,
             playerDeaths: player.deaths,

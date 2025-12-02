@@ -166,6 +166,16 @@ function initializeEventListeners() {
     // Aim Battle Controls
     document.getElementById('leaveAimBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startAimBtn').addEventListener('click', () => {
+        // Request fullscreen for aim canvas container to show overlay
+        const container = document.getElementById('aimCanvas').parentElement;
+        if (container.requestFullscreen) {
+            container.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
+        }
+        
         socket.emit('aimReady', currentRoom);
     });
     
@@ -1086,7 +1096,7 @@ function initFPSGame() {
         canvas: canvas,
         ctx: ctx,
         player: { x: 100, y: 100, angle: 0, health: 100, kills: 0, deaths: 0 },
-        opponent: { x: 700, y: 500, angle: 0, health: 100 },
+        opponents: [],
         bullets: [],
         keys: {},
         mouse: { x: 0, y: 0 },
@@ -1158,7 +1168,7 @@ function shoot() {
 function drawFPSGame() {
     if (!fpsGame || currentGame !== 'fps') return;
     
-    const { ctx, canvas, player, opponent, bullets } = fpsGame;
+    const { ctx, canvas, player, opponents, bullets } = fpsGame;
     
     // Clear canvas
     ctx.fillStyle = '#1a1a1a';
@@ -1180,17 +1190,25 @@ function drawFPSGame() {
         ctx.stroke();
     }
     
-    // Draw opponent
-    if (opponent.health > 0) {
-        ctx.fillStyle = '#ff0000';
-        ctx.beginPath();
-        ctx.arc(opponent.x, opponent.y, 20, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Opponent health bar
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(opponent.x - 25, opponent.y - 35, 50 * (opponent.health / 100), 5);
-    }
+    // Draw all opponents
+    opponents.forEach(opponent => {
+        if (opponent.health > 0) {
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(opponent.x, opponent.y, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Opponent health bar
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(opponent.x - 25, opponent.y - 35, 50 * (opponent.health / 100), 5);
+            
+            // Opponent name
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(opponent.name || 'Player', opponent.x, opponent.y - 45);
+        }
+    });
     
     // Draw player
     ctx.fillStyle = '#2ecc71';
@@ -1259,7 +1277,7 @@ socket.on('fpsStart', (data) => {
     
     fpsGame.isPlaying = true;
     fpsGame.player.health = 100;
-    fpsGame.opponent.health = 100;
+    fpsGame.opponents = [];
     fpsGame.ammo = 30;
     
     document.getElementById('fpsStatus').textContent = 'FIGHT!';
@@ -1283,10 +1301,7 @@ socket.on('fpsStart', (data) => {
 socket.on('fpsUpdate', (data) => {
     if (!fpsGame) return;
     
-    fpsGame.opponent.x = data.opponentX;
-    fpsGame.opponent.y = data.opponentY;
-    fpsGame.opponent.angle = data.opponentAngle;
-    fpsGame.opponent.health = data.opponentHealth;
+    fpsGame.opponents = data.opponents || [];
     fpsGame.player.health = data.playerHealth;
     fpsGame.bullets = data.bullets || [];
     
@@ -1446,6 +1461,13 @@ socket.on('aimStart', (data) => {
     document.getElementById('startAimBtn').style.display = 'none';
     document.getElementById('aimTimer').classList.add('active');
     document.getElementById('aimScoreOverlay').classList.add('active');
+    
+    // Initialize overlay scores
+    document.getElementById('overlayPlayerHits').textContent = '0';
+    document.getElementById('overlayOppHits').textContent = '0';
+    document.getElementById('overlayPlayerTime').textContent = '0';
+    document.getElementById('overlayOppTime').textContent = '0';
+    document.getElementById('overlayTimer').textContent = '30';
     
     // Timer countdown
     const timerInterval = setInterval(() => {
