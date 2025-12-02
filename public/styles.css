@@ -1140,6 +1140,122 @@ body {
     transform: scale(0.95);
 }
 
+/* Table Tennis Game */
+.pingpong-arena {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #1e3a5f 0%, #0f1c2e 100%);
+    border: 5px solid #d4af37;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
+.pingpong-scoreboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 15px;
+}
+
+.player-score {
+    text-align: center;
+}
+
+.score-name {
+    font-size: 1.2em;
+    color: #d4af37;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.score-value {
+    font-size: 3em;
+    color: #2ecc71;
+    font-weight: bold;
+    text-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+}
+
+.score-divider {
+    font-size: 3em;
+    color: #d4af37;
+    font-weight: bold;
+}
+
+#pingpongCanvas {
+    display: block;
+    margin: 0 auto;
+    background: #0a3d0a;
+    border: 3px solid #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.pingpong-controls {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.control-info {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+}
+
+.control-info p {
+    margin: 10px 0;
+    font-size: 1.1em;
+    color: #fff;
+}
+
+.control-info kbd {
+    background: #d4af37;
+    color: #1a1a2e;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 1em;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.pingpong-status {
+    text-align: center;
+    font-size: 1.8em;
+    color: #d4af37;
+    font-weight: bold;
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+}
+
+.pingpong-result {
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-top: 20px;
+    padding: 30px;
+    border-radius: 20px;
+    animation: slideIn 0.5s ease-out;
+}
+
+.pingpong-result.winner {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.2);
+    border: 3px solid #2ecc71;
+}
+
+.pingpong-result.loser {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    border: 3px solid #e74c3c;
+}
+
 @media (max-width: 768px) {
     .chat-widget {
         width: 90%;
@@ -1149,5 +1265,15 @@ body {
     
     .chat-body {
         height: 300px;
+    }
+    
+    #pingpongCanvas {
+        width: 100%;
+        height: auto;
+    }
+    
+    .pingpong-scoreboard {
+        flex-direction: column;
+        gap: 15px;
     }
 }

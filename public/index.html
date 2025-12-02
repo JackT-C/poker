@@ -67,6 +67,14 @@
                     <input type="text" class="room-input" placeholder="Room ID (optional)">
                     <button class="btn btn-primary join-btn">Join Arena</button>
                 </div>
+                
+                <div class="game-card" data-game="pingpong">
+                    <div class="game-icon">🏓</div>
+                    <h2>Table Tennis</h2>
+                    <p>Fast-paced 1v1 paddle action!</p>
+                    <input type="text" class="room-input" placeholder="Room ID (optional)">
+                    <button class="btn btn-primary join-btn">Join Match</button>
+                </div>
             </div>
         </div>
         
@@ -210,6 +218,45 @@
             </div>
             
             <button id="startSumoBtn" class="btn btn-gold start-game-btn">Ready to Fight!</button>
+        </div>
+        
+        <!-- Table Tennis Game Screen -->
+        <div id="pingpongGame" class="screen game-screen">
+            <div class="game-header">
+                <button id="leavePingPongBtn" class="btn btn-secondary">← Leave Match</button>
+                <h2>🏓 Table Tennis Match 🏓</h2>
+                <div class="room-info">
+                    Room: <span id="pingpongRoomId"></span>
+                </div>
+            </div>
+            
+            <div class="pingpong-arena">
+                <div class="pingpong-scoreboard">
+                    <div class="player-score" id="player1Score">
+                        <div class="score-name">Player 1</div>
+                        <div class="score-value">0</div>
+                    </div>
+                    <div class="score-divider">:</div>
+                    <div class="player-score" id="player2Score">
+                        <div class="score-name">Player 2</div>
+                        <div class="score-value">0</div>
+                    </div>
+                </div>
+                
+                <canvas id="pingpongCanvas" width="800" height="500"></canvas>
+                
+                <div class="pingpong-controls">
+                    <div class="control-info">
+                        <p>🎮 Use <kbd>↑</kbd> and <kbd>↓</kbd> arrow keys to move your paddle</p>
+                        <p>First to 11 points wins!</p>
+                    </div>
+                </div>
+                
+                <div id="pingpongStatus" class="pingpong-status">Waiting for opponent...</div>
+                <div id="pingpongResult" class="pingpong-result"></div>
+            </div>
+            
+            <button id="startPingPongBtn" class="btn btn-gold start-game-btn">Ready to Play!</button>
         </div>
         
         <!-- Buy Chips Modal -->

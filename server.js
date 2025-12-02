@@ -26,6 +26,7 @@ app.use(session({
 const pokerRooms = new Map();
 const blackjackRooms = new Map();
 const sumoRooms = new Map();
+const pingpongRooms = new Map();
 const players = new Map();
 
 // Card deck utilities
@@ -435,6 +436,103 @@ function endSumoGame(room, roomId) {
     room.players.forEach(p => p.clicks = 0);
 }
 
+// Table Tennis game functions
+function startPingPongGame(room, roomId) {
+    // Notify players
+    room.players.forEach(player => {
+        io.to(player.id).emit('pingpongStart', {
+            playerSide: player.side
+        });
+    });
+    
+    // Start game loop
+    const gameLoop = setInterval(() => {
+        if (!room.gameStarted) {
+            clearInterval(gameLoop);
+            return;
+        }
+        
+        updatePingPongBall(room);
+        
+        io.to(roomId).emit('pingpongUpdate', {
+            ball: room.ball,
+            paddle1Y: room.paddle1Y,
+            paddle2Y: room.paddle2Y,
+            score1: room.score1,
+            score2: room.score2
+        });
+        
+        // Check for win condition
+        if (room.score1 >= 11 || room.score2 >= 11) {
+            clearInterval(gameLoop);
+            endPingPongGame(room, roomId);
+        }
+    }, 1000 / 60); // 60 FPS
+}
+
+function updatePingPongBall(room) {
+    room.ball.x += room.ball.speedX;
+    room.ball.y += room.ball.speedY;
+    
+    // Top/bottom wall collision
+    if (room.ball.y <= 0 || room.ball.y >= 500) {
+        room.ball.speedY *= -1;
+    }
+    
+    // Paddle 1 collision
+    if (room.ball.x <= 20 && 
+        room.ball.y >= room.paddle1Y && 
+        room.ball.y <= room.paddle1Y + 100) {
+        room.ball.speedX = Math.abs(room.ball.speedX);
+        room.ball.speedY += (Math.random() - 0.5) * 2;
+    }
+    
+    // Paddle 2 collision
+    if (room.ball.x >= 780 && 
+        room.ball.y >= room.paddle2Y && 
+        room.ball.y <= room.paddle2Y + 100) {
+        room.ball.speedX = -Math.abs(room.ball.speedX);
+        room.ball.speedY += (Math.random() - 0.5) * 2;
+    }
+    
+    // Score points
+    if (room.ball.x < 0) {
+        room.score2++;
+        resetPingPongBall(room);
+    } else if (room.ball.x > 800) {
+        room.score1++;
+        resetPingPongBall(room);
+    }
+}
+
+function resetPingPongBall(room) {
+    room.ball.x = 400;
+    room.ball.y = 250;
+    room.ball.speedX = (Math.random() > 0.5 ? 5 : -5);
+    room.ball.speedY = (Math.random() - 0.5) * 4;
+}
+
+function endPingPongGame(room, roomId) {
+    room.gameStarted = false;
+    const winner = room.score1 > room.score2 ? 1 : 2;
+    const winnings = 100;
+    const cost = 50;
+    
+    io.to(roomId).emit('pingpongEnd', {
+        winner: winner,
+        score1: room.score1,
+        score2: room.score2,
+        winnings: winnings,
+        cost: cost
+    });
+    
+    // Reset room
+    room.ready = [];
+    room.score1 = 0;
+    room.score2 = 0;
+    resetPingPongBall(room);
+}
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
@@ -551,6 +649,37 @@ io.on('connection', (socket) => {
                 
                 io.to(roomId).emit('chatSystem', {
                     message: `${player.name} entered the arena`
+                });
+            }
+        } else if (game === 'pingpong') {
+            if (!pingpongRooms.has(roomId)) {
+                pingpongRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    ready: [],
+                    gameStarted: false,
+                    ball: { x: 400, y: 250, speedX: 5, speedY: 3 },
+                    paddle1Y: 200,
+                    paddle2Y: 200,
+                    score1: 0,
+                    score2: 0
+                });
+            }
+            
+            const room = pingpongRooms.get(roomId);
+            if (room.players.length < 2) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    side: room.players.length + 1
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} entered the match`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} entered the match`
                 });
             }
         }
@@ -835,6 +964,36 @@ io.on('connection', (socket) => {
         }
     });
     
+    // Table Tennis handlers
+    socket.on('pingpongReady', (roomId) => {
+        const room = pingpongRooms.get(roomId);
+        if (!room || room.gameStarted) return;
+        
+        if (!room.ready.includes(socket.id)) {
+            room.ready.push(socket.id);
+        }
+        
+        // Start game when both players are ready
+        if (room.ready.length === 2 && room.players.length === 2) {
+            room.gameStarted = true;
+            startPingPongGame(room, roomId);
+        }
+    });
+    
+    socket.on('pingpongPaddle', ({ roomId, y }) => {
+        const room = pingpongRooms.get(roomId);
+        if (!room || !room.gameStarted) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            if (player.side === 1) {
+                room.paddle1Y = y;
+            } else {
+                room.paddle2Y = y;
+            }
+        }
+    });
+    
     // Disconnect
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
@@ -882,6 +1041,21 @@ io.on('connection', (socket) => {
                 
                 io.to(roomId).emit('chatSystem', {
                     message: `${player.name} left the arena`
+                });
+            }
+            
+            // Remove from pingpong room
+            if (pingpongRooms.has(roomId)) {
+                const room = pingpongRooms.get(roomId);
+                room.players = room.players.filter(p => p.id !== socket.id);
+                room.ready = room.ready.filter(id => id !== socket.id);
+                room.gameStarted = false;
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} left the match`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} left the match`
                 });
             }
         }

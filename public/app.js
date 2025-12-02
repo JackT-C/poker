@@ -131,6 +131,12 @@ function initializeEventListeners() {
         }
     });
     
+    // Table Tennis Controls
+    document.getElementById('leavePingPongBtn').addEventListener('click', () => leaveGame());
+    document.getElementById('startPingPongBtn').addEventListener('click', () => {
+        socket.emit('pingpongReady', currentRoom);
+    });
+    
     // Chat Controls
     document.getElementById('toggleChat').addEventListener('click', toggleChat);
     document.getElementById('chatSend').addEventListener('click', sendChatMessage);
@@ -349,6 +355,10 @@ function joinGame(game, roomId) {
     } else if (game === 'sumo') {
         document.getElementById('sumoGame').classList.add('active');
         document.getElementById('sumoRoomId').textContent = roomId;
+    } else if (game === 'pingpong') {
+        document.getElementById('pingpongGame').classList.add('active');
+        document.getElementById('pingpongRoomId').textContent = roomId;
+        initPingPongGame();
     }
 }
 
@@ -843,6 +853,150 @@ function addChatSystemMessage(message) {
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
+// Table Tennis Game Logic
+let pingpongGame = null;
+
+function initPingPongGame() {
+    const canvas = document.getElementById('pingpongCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    pingpongGame = {
+        canvas: canvas,
+        ctx: ctx,
+        ball: { x: 400, y: 250, radius: 8, speedX: 0, speedY: 0 },
+        paddle1: { x: 10, y: 200, width: 10, height: 100 },
+        paddle2: { x: 780, y: 200, width: 10, height: 100 },
+        score1: 0,
+        score2: 0,
+        playerSide: null,
+        isPlaying: false,
+        keys: {}
+    };
+    
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+        if (currentGame === 'pingpong') {
+            pingpongGame.keys[e.key] = true;
+        }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+        if (currentGame === 'pingpong') {
+            pingpongGame.keys[e.key] = false;
+        }
+    });
+    
+    drawPingPongGame();
+}
+
+function drawPingPongGame() {
+    if (!pingpongGame || currentGame !== 'pingpong') return;
+    
+    const { ctx, canvas, ball, paddle1, paddle2 } = pingpongGame;
+    
+    // Clear canvas
+    ctx.fillStyle = '#0a3d0a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw center line
+    ctx.strokeStyle = '#fff';
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw paddles
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(paddle1.x, paddle1.y, paddle1.width, paddle1.height);
+    ctx.fillRect(paddle2.x, paddle2.y, paddle2.width, paddle2.height);
+    
+    // Draw ball
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    
+    requestAnimationFrame(drawPingPongGame);
+}
+
+function updatePingPongPaddle() {
+    if (!pingpongGame || !pingpongGame.isPlaying) return;
+    
+    const paddle = pingpongGame.playerSide === 1 ? pingpongGame.paddle1 : pingpongGame.paddle2;
+    const speed = 8;
+    
+    if (pingpongGame.keys['ArrowUp'] && paddle.y > 0) {
+        paddle.y -= speed;
+    }
+    if (pingpongGame.keys['ArrowDown'] && paddle.y < pingpongGame.canvas.height - paddle.height) {
+        paddle.y += speed;
+    }
+    
+    // Emit paddle position
+    socket.emit('pingpongPaddle', {
+        roomId: currentRoom,
+        y: paddle.y
+    });
+}
+
+// Ping Pong Socket Events
+socket.on('pingpongStart', (data) => {
+    if (!pingpongGame) return;
+    
+    pingpongGame.isPlaying = true;
+    pingpongGame.playerSide = data.playerSide;
+    pingpongGame.score1 = 0;
+    pingpongGame.score2 = 0;
+    
+    document.getElementById('pingpongStatus').textContent = `You are Player ${data.playerSide}`;
+    document.getElementById('startPingPongBtn').style.display = 'none';
+    
+    setInterval(updatePingPongPaddle, 16); // 60 FPS
+});
+
+socket.on('pingpongUpdate', (data) => {
+    if (!pingpongGame) return;
+    
+    pingpongGame.ball = data.ball;
+    pingpongGame.paddle1.y = data.paddle1Y;
+    pingpongGame.paddle2.y = data.paddle2Y;
+    pingpongGame.score1 = data.score1;
+    pingpongGame.score2 = data.score2;
+    
+    // Update scoreboard
+    document.querySelector('#player1Score .score-value').textContent = data.score1;
+    document.querySelector('#player2Score .score-value').textContent = data.score2;
+});
+
+socket.on('pingpongEnd', (data) => {
+    if (!pingpongGame) return;
+    
+    pingpongGame.isPlaying = false;
+    
+    const resultDiv = document.getElementById('pingpongResult');
+    const isWinner = data.winner === pingpongGame.playerSide;
+    
+    if (isWinner) {
+        resultDiv.innerHTML = `🏆 YOU WIN! 🏆<br>Score: ${data.score1} - ${data.score2}<br>+${data.winnings} chips!`;
+        resultDiv.className = 'pingpong-result winner';
+        playerChips += data.winnings;
+    } else {
+        resultDiv.innerHTML = `You Lost!<br>Score: ${data.score1} - ${data.score2}<br>-${data.cost} chips`;
+        resultDiv.className = 'pingpong-result loser';
+        playerChips -= data.cost;
+    }
+    
+    updatePlayerChips();
+    
+    setTimeout(() => {
+        resultDiv.innerHTML = '';
+        document.getElementById('startPingPongBtn').style.display = 'block';
+        document.getElementById('pingpongStatus').textContent = 'Waiting for opponent...';
+    }, 5000);
+});
 
 // Window event handlers
 window.onclick = function(event) {
