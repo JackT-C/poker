@@ -336,14 +336,16 @@ function startPokerGame(room, roomId) {
         player.folded = false;
     });
     
-    // Small and big blind
-    room.players[0].chips -= 5;
-    room.players[0].bet = 5;
-    room.pot += 5;
-    
-    room.players[1].chips -= 10;
-    room.players[1].bet = 10;
-    room.pot += 10;
+    // Small and big blind (ensure at least 2 players)
+    if (room.players.length >= 2) {
+        room.players[0].chips -= 5;
+        room.players[0].bet = 5;
+        room.pot += 5;
+        
+        room.players[1].chips -= 10;
+        room.players[1].bet = 10;
+        room.pot += 10;
+    }
     
     room.players.forEach(player => {
         if (!player.isBot) {
@@ -829,6 +831,13 @@ io.on('connection', (socket) => {
     // Start poker game
     socket.on('startPoker', (roomId) => {
         const room = pokerRooms.get(roomId);
+        if (!room) return;
+        
+        if (room.players.length < 2) {
+            socket.emit('error', { message: 'Need at least 2 players to start the game' });
+            return;
+        }
+        
         startPokerGame(room, roomId);
     });
     

@@ -435,7 +435,7 @@ function updatePokerRoom(room) {
     if (!room) return;
     
     // Update pot
-    document.getElementById('pot').textContent = `$${room.pot}`;
+    document.getElementById('pot').textContent = `$${room.pot || 0}`;
     
     // Update call button text
     const player = room.players.find(p => p.id === socket.id);
