@@ -246,6 +246,18 @@ function updatePokerRoom(room) {
     // Update pot
     document.getElementById('pot').textContent = `$${room.pot}`;
     
+    // Update turn indicator
+    const currentPlayer = room.players[room.currentPlayerIndex];
+    const turnDiv = document.getElementById('currentTurn');
+    if (currentPlayer && room.gameStarted) {
+        const isYourTurn = currentPlayer.id === socket.id;
+        turnDiv.innerHTML = isYourTurn 
+            ? '<div style="color: #2ecc71; font-size: 1.3em; font-weight: bold; animation: pulse 1.5s infinite;">🎯 YOUR TURN!</div>'
+            : `<div style="color: #f39c12; font-size: 1.1em;">Current turn: ${currentPlayer.name}</div>`;
+    } else {
+        turnDiv.innerHTML = '';
+    }
+    
     // Update community cards
     displayCommunityCards(room.communityCards);
     
@@ -283,6 +295,22 @@ function updatePokerRoom(room) {
 
 function updateBlackjackRoom(room) {
     if (!room) return;
+    
+    // Update turn indicator
+    const turnDiv = document.getElementById('blackjackTurn');
+    if (room.gameStarted) {
+        const activePlayers = room.players.filter(p => p.bet > 0 && !p.standing);
+        if (activePlayers.length > 0) {
+            const yourTurn = activePlayers.find(p => p.id === socket.id);
+            turnDiv.innerHTML = yourTurn
+                ? '<div style="color: #2ecc71; font-size: 1.3em; font-weight: bold; animation: pulse 1.5s infinite;">🎯 YOUR TURN! Hit or Stand?</div>'
+                : `<div style="color: #f39c12; font-size: 1.1em;">Waiting for other players...</div>`;
+        } else {
+            turnDiv.innerHTML = '<div style="color: #95a5a6; font-size: 1.1em;">Round in progress...</div>';
+        }
+    } else {
+        turnDiv.innerHTML = '';
+    }
     
     const playersGrid = document.getElementById('blackjackPlayers');
     playersGrid.innerHTML = '';

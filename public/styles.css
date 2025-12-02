@@ -390,6 +390,34 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
+/* Turn Indicator */
+.turn-indicator-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.current-turn {
+    padding: 15px 30px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 15px;
+    min-height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
 /* Poker Controls */
 .poker-controls {
     display: flex;
