@@ -441,14 +441,19 @@ function startPingPongGame(room, roomId) {
     // Notify players
     room.players.forEach(player => {
         io.to(player.id).emit('pingpongStart', {
-            playerSide: player.side
+            playerSide: player.side,
+            player1Name: room.players[0]?.name || 'Player 1',
+            player2Name: room.players[1]?.name || 'Player 2'
         });
     });
     
+    // Reset ball
+    resetPingPongBall(room);
+    
     // Start game loop
-    const gameLoop = setInterval(() => {
-        if (!room.gameStarted) {
-            clearInterval(gameLoop);
+    room.gameInterval = setInterval(() => {
+        if (!room.gameStarted || !pingpongRooms.has(roomId)) {
+            clearInterval(room.gameInterval);
             return;
         }
         
@@ -464,7 +469,7 @@ function startPingPongGame(room, roomId) {
         
         // Check for win condition
         if (room.score1 >= 11 || room.score2 >= 11) {
-            clearInterval(gameLoop);
+            clearInterval(room.gameInterval);
             endPingPongGame(room, roomId);
         }
     }, 1000 / 60); // 60 FPS
@@ -474,25 +479,38 @@ function updatePingPongBall(room) {
     room.ball.x += room.ball.speedX;
     room.ball.y += room.ball.speedY;
     
+    const ballRadius = 8;
+    
     // Top/bottom wall collision
-    if (room.ball.y <= 0 || room.ball.y >= 500) {
+    if (room.ball.y - ballRadius <= 0) {
+        room.ball.y = ballRadius;
+        room.ball.speedY *= -1;
+    }
+    if (room.ball.y + ballRadius >= 500) {
+        room.ball.y = 500 - ballRadius;
         room.ball.speedY *= -1;
     }
     
-    // Paddle 1 collision
-    if (room.ball.x <= 20 && 
+    // Paddle 1 collision (left paddle)
+    if (room.ball.x - ballRadius <= 20 && 
+        room.ball.x > 0 &&
         room.ball.y >= room.paddle1Y && 
         room.ball.y <= room.paddle1Y + 100) {
-        room.ball.speedX = Math.abs(room.ball.speedX);
-        room.ball.speedY += (Math.random() - 0.5) * 2;
+        room.ball.x = 20 + ballRadius;
+        room.ball.speedX = Math.abs(room.ball.speedX) * 1.05; // Speed up slightly
+        const relativeIntersectY = (room.paddle1Y + 50) - room.ball.y;
+        room.ball.speedY = -relativeIntersectY * 0.1;
     }
     
-    // Paddle 2 collision
-    if (room.ball.x >= 780 && 
+    // Paddle 2 collision (right paddle)
+    if (room.ball.x + ballRadius >= 780 && 
+        room.ball.x < 800 &&
         room.ball.y >= room.paddle2Y && 
         room.ball.y <= room.paddle2Y + 100) {
-        room.ball.speedX = -Math.abs(room.ball.speedX);
-        room.ball.speedY += (Math.random() - 0.5) * 2;
+        room.ball.x = 780 - ballRadius;
+        room.ball.speedX = -Math.abs(room.ball.speedX) * 1.05; // Speed up slightly
+        const relativeIntersectY = (room.paddle2Y + 50) - room.ball.y;
+        room.ball.speedY = -relativeIntersectY * 0.1;
     }
     
     // Score points

@@ -951,18 +951,33 @@ socket.on('pingpongStart', (data) => {
     pingpongGame.score1 = 0;
     pingpongGame.score2 = 0;
     
+    // Update player names on scoreboard
+    document.querySelector('#player1Score .score-name').textContent = data.player1Name || 'Player 1';
+    document.querySelector('#player2Score .score-name').textContent = data.player2Name || 'Player 2';
+    
     document.getElementById('pingpongStatus').textContent = `You are Player ${data.playerSide}`;
     document.getElementById('startPingPongBtn').style.display = 'none';
     
-    setInterval(updatePingPongPaddle, 16); // 60 FPS
+    // Start sending paddle updates
+    if (!pingpongGame.updateInterval) {
+        pingpongGame.updateInterval = setInterval(updatePingPongPaddle, 16); // 60 FPS
+    }
 });
 
 socket.on('pingpongUpdate', (data) => {
     if (!pingpongGame) return;
     
-    pingpongGame.ball = data.ball;
+    // Update ball position
+    pingpongGame.ball.x = data.ball.x;
+    pingpongGame.ball.y = data.ball.y;
+    pingpongGame.ball.speedX = data.ball.speedX;
+    pingpongGame.ball.speedY = data.ball.speedY;
+    
+    // Update paddle positions
     pingpongGame.paddle1.y = data.paddle1Y;
     pingpongGame.paddle2.y = data.paddle2Y;
+    
+    // Update scores
     pingpongGame.score1 = data.score1;
     pingpongGame.score2 = data.score2;
     
@@ -975,6 +990,12 @@ socket.on('pingpongEnd', (data) => {
     if (!pingpongGame) return;
     
     pingpongGame.isPlaying = false;
+    
+    // Stop update interval
+    if (pingpongGame.updateInterval) {
+        clearInterval(pingpongGame.updateInterval);
+        pingpongGame.updateInterval = null;
+    }
     
     const resultDiv = document.getElementById('pingpongResult');
     const isWinner = data.winner === pingpongGame.playerSide;
