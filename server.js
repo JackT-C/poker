@@ -66,25 +66,59 @@ function calculateBlackjackScore(hand) {
 
 // Poker hand evaluation
 function evaluatePokerHand(cards) {
-    // Simplified poker hand evaluation
+    if (!cards || cards.length < 5) {
+        return { rank: -1, name: 'Not enough cards', description: '' };
+    }
+    
     const ranks = cards.map(c => c.rank);
     const suits = cards.map(c => c.suit);
     
     const rankCounts = {};
     ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
     const counts = Object.values(rankCounts).sort((a, b) => b - a);
+    const rankValues = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
     
+    const sortedRanks = ranks.map(r => rankValues[r]).sort((a, b) => b - a);
     const isFlush = suits.every(s => s === suits[0]);
-    const uniqueRanks = [...new Set(ranks)].length;
+    const isStraight = sortedRanks.every((val, i) => i === 0 || val === sortedRanks[i - 1] - 1);
     
-    if (counts[0] === 4) return { rank: 7, name: 'Four of a Kind' };
-    if (counts[0] === 3 && counts[1] === 2) return { rank: 6, name: 'Full House' };
-    if (isFlush) return { rank: 5, name: 'Flush' };
-    if (counts[0] === 3) return { rank: 3, name: 'Three of a Kind' };
-    if (counts[0] === 2 && counts[1] === 2) return { rank: 2, name: 'Two Pair' };
-    if (counts[0] === 2) return { rank: 1, name: 'Pair' };
+    // Get high card name
+    const highCard = Object.keys(rankCounts).reduce((a, b) => rankValues[a] > rankValues[b] ? a : b);
     
-    return { rank: 0, name: 'High Card' };
+    // Check for pairs/trips/quads
+    const pairRanks = Object.keys(rankCounts).filter(r => rankCounts[r] === 2);
+    const tripRank = Object.keys(rankCounts).find(r => rankCounts[r] === 3);
+    const quadRank = Object.keys(rankCounts).find(r => rankCounts[r] === 4);
+    
+    if (isStraight && isFlush && sortedRanks[0] === 14) {
+        return { rank: 9, name: 'Royal Flush', description: '🏆 ROYAL FLUSH! Best hand possible!' };
+    }
+    if (isStraight && isFlush) {
+        return { rank: 8, name: 'Straight Flush', description: `💎 Straight Flush, ${highCard} high!` };
+    }
+    if (quadRank) {
+        return { rank: 7, name: 'Four of a Kind', description: `🎯 Four ${quadRank}s!` };
+    }
+    if (tripRank && pairRanks.length >= 1) {
+        return { rank: 6, name: 'Full House', description: `🏠 Full House: ${tripRank}s over ${pairRanks[0]}s` };
+    }
+    if (isFlush) {
+        return { rank: 5, name: 'Flush', description: `✨ Flush, ${highCard} high!` };
+    }
+    if (isStraight) {
+        return { rank: 4, name: 'Straight', description: `📊 Straight, ${highCard} high!` };
+    }
+    if (tripRank) {
+        return { rank: 3, name: 'Three of a Kind', description: `🎲 Three ${tripRank}s` };
+    }
+    if (pairRanks.length >= 2) {
+        return { rank: 2, name: 'Two Pair', description: `👥 Two Pair: ${pairRanks[0]}s and ${pairRanks[1]}s` };
+    }
+    if (pairRanks.length === 1) {
+        return { rank: 1, name: 'Pair', description: `🎴 Pair of ${pairRanks[0]}s` };
+    }
+    
+    return { rank: 0, name: 'High Card', description: `High card: ${highCard}` };
 }
 
 // Bot utilities
@@ -245,6 +279,40 @@ function processBotBlackjackTurns(room, roomId, dealerUpCard) {
             }
         }, index * 2000);
     });
+}
+
+function resetPokerGame(room, roomId) {
+    room.gameStarted = false;
+    room.deck = createDeck();
+    room.communityCards = [];
+    room.pot = 0;
+    room.currentBet = 0;
+    room.currentPlayerIndex = 0;
+    room.round = 'preflop';
+    
+    room.players.forEach(player => {
+        player.hand = [];
+        player.bet = 0;
+        player.folded = false;
+    });
+    
+    io.to(roomId).emit('gameReset', { room });
+}
+
+function resetBlackjackGame(room, roomId) {
+    room.gameStarted = false;
+    room.deck = createDeck();
+    room.dealer = { hand: [], score: 0 };
+    
+    room.players.forEach(player => {
+        player.hand = [];
+        player.bet = 0;
+        player.score = 0;
+        player.standing = false;
+        player.result = null;
+    });
+    
+    io.to(roomId).emit('gameReset', { room });
 }
 
 // Socket.io connection handling

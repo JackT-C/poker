@@ -124,21 +124,31 @@ socket.on('roomUpdate', (data) => {
 });
 
 socket.on('dealCards', (data) => {
+    playerHand = data.hand;
     displayPlayerHand(data.hand);
+    updateHandEvaluation();
 });
 
 socket.on('gameStart', (data) => {
     updatePokerRoom(data.room);
+    communityCards = data.room.communityCards;
+    displayCommunityCards(data.room.communityCards);
+    updateHandEvaluation();
     showMessage('Game started! Good luck!', 'success');
 });
 
 socket.on('gameUpdate', (data) => {
     updatePokerRoom(data.room);
+    communityCards = data.room.communityCards;
+    displayCommunityCards(data.room.communityCards);
+    updateHandEvaluation();
 });
 
 socket.on('roundAdvance', (data) => {
     updatePokerRoom(data.room);
+    communityCards = data.room.communityCards;
     displayCommunityCards(data.room.communityCards);
+    updateHandEvaluation();
 });
 
 socket.on('gameEnd', (data) => {
@@ -180,8 +190,12 @@ socket.on('error', (data) => {
 
 socket.on('gameReset', (data) => {
     if (currentGame === 'poker') {
+        playerHand = [];
+        communityCards = [];
         updatePokerRoom(data.room);
         document.getElementById('playerHand').innerHTML = '';
+        document.getElementById('handEvaluation').innerHTML = '';
+        document.getElementById('communityCards').innerHTML = '';
         document.getElementById('resetPokerBtn').style.display = 'none';
         showMessage('Game reset! Ready to start a new game.', 'success');
     } else if (currentGame === 'blackjack') {
@@ -338,6 +352,81 @@ function renderCard(card) {
             <div class="suit">${card.suit}</div>
         </div>
     `;
+}
+
+// Poker hand evaluation (client-side)
+let playerHand = [];
+let communityCards = [];
+
+function evaluatePokerHand(cards) {
+    if (!cards || cards.length < 5) {
+        return { rank: -1, name: '', description: '' };
+    }
+    
+    const ranks = cards.map(c => c.rank);
+    const suits = cards.map(c => c.suit);
+    
+    const rankCounts = {};
+    ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
+    const counts = Object.values(rankCounts).sort((a, b) => b - a);
+    const rankValues = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+    
+    const sortedRanks = ranks.map(r => rankValues[r]).sort((a, b) => b - a);
+    const isFlush = suits.every(s => s === suits[0]);
+    const isStraight = sortedRanks.every((val, i) => i === 0 || val === sortedRanks[i - 1] - 1);
+    
+    const highCard = Object.keys(rankCounts).reduce((a, b) => rankValues[a] > rankValues[b] ? a : b);
+    const pairRanks = Object.keys(rankCounts).filter(r => rankCounts[r] === 2);
+    const tripRank = Object.keys(rankCounts).find(r => rankCounts[r] === 3);
+    const quadRank = Object.keys(rankCounts).find(r => rankCounts[r] === 4);
+    
+    if (isStraight && isFlush && sortedRanks[0] === 14) {
+        return { rank: 9, name: 'Royal Flush', description: '🏆 ROYAL FLUSH! Best hand possible!' };
+    }
+    if (isStraight && isFlush) {
+        return { rank: 8, name: 'Straight Flush', description: `💎 Straight Flush, ${highCard} high!` };
+    }
+    if (quadRank) {
+        return { rank: 7, name: 'Four of a Kind', description: `🎯 Four ${quadRank}s!` };
+    }
+    if (tripRank && pairRanks.length >= 1) {
+        return { rank: 6, name: 'Full House', description: `🏠 Full House: ${tripRank}s over ${pairRanks[0]}s` };
+    }
+    if (isFlush) {
+        return { rank: 5, name: 'Flush', description: `✨ Flush, ${highCard} high!` };
+    }
+    if (isStraight) {
+        return { rank: 4, name: 'Straight', description: `📊 Straight, ${highCard} high!` };
+    }
+    if (tripRank) {
+        return { rank: 3, name: 'Three of a Kind', description: `🎲 Three ${tripRank}s` };
+    }
+    if (pairRanks.length >= 2) {
+        return { rank: 2, name: 'Two Pair', description: `👥 Two Pair: ${pairRanks[0]}s and ${pairRanks[1]}s` };
+    }
+    if (pairRanks.length === 1) {
+        return { rank: 1, name: 'Pair', description: `🎴 Pair of ${pairRanks[0]}s` };
+    }
+    
+    return { rank: 0, name: 'High Card', description: `High card: ${highCard}` };
+}
+
+function updateHandEvaluation() {
+    const evalDiv = document.getElementById('handEvaluation');
+    if (!evalDiv) return;
+    
+    const allCards = [...playerHand, ...communityCards];
+    if (allCards.length >= 5) {
+        const evaluation = evaluatePokerHand(allCards);
+        if (evaluation.rank >= 0) {
+            const color = evaluation.rank >= 4 ? '#2ecc71' : evaluation.rank >= 1 ? '#f39c12' : '#95a5a6';
+            evalDiv.innerHTML = `<div style="color: ${color}; font-weight: bold; font-size: 1.2em; margin-top: 10px;">${evaluation.description}</div>`;
+        }
+    } else if (playerHand.length > 0) {
+        evalDiv.innerHTML = '<div style="color: #95a5a6; font-size: 1em; margin-top: 10px;">Waiting for community cards...</div>';
+    } else {
+        evalDiv.innerHTML = '';
+    }
 }
 
 // Payment Functions
