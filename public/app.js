@@ -395,6 +395,10 @@ function joinGame(game, roomId) {
         document.getElementById('fpsGame').classList.add('active');
         document.getElementById('fpsRoomId').textContent = roomId;
         initFPSGame();
+    } else if (game === 'aim') {
+        document.getElementById('aimGame').classList.add('active');
+        document.getElementById('aimRoomId').textContent = roomId;
+        initAimGame();
     }
 }
 
@@ -1327,6 +1331,199 @@ socket.on('fpsEnd', (data) => {
         resultDiv.innerHTML = '';
         document.getElementById('startFPSBtn').style.display = 'block';
         document.getElementById('fpsStatus').textContent = 'Waiting for opponent...';
+    }, 5000);
+});
+
+// Aim Battle Game Logic
+let aimGame = null;
+
+function initAimGame() {
+    const canvas = document.getElementById('aimCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    aimGame = {
+        canvas: canvas,
+        ctx: ctx,
+        targets: [],
+        playerHits: 0,
+        opponentHits: 0,
+        playerTimes: [],
+        opponentTimes: [],
+        isPlaying: false,
+        timeLeft: 30,
+        lastTargetTime: 0
+    };
+    
+    // Click handler for targets
+    canvas.addEventListener('click', (e) => {
+        if (!aimGame || !aimGame.isPlaying) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        // Check if clicked on a target
+        for (let i = aimGame.targets.length - 1; i >= 0; i--) {
+            const target = aimGame.targets[i];
+            const dx = x - target.x;
+            const dy = y - target.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < target.radius) {
+                const hitTime = Date.now() - aimGame.lastTargetTime;
+                socket.emit('aimHit', { roomId: currentRoom, time: hitTime });
+                aimGame.targets.splice(i, 1);
+                break;
+            }
+        }
+    });
+    
+    drawAimGame();
+}
+
+function drawAimGame() {
+    if (!aimGame || currentGame !== 'aim') return;
+    
+    const { ctx, canvas, targets } = aimGame;
+    
+    // Clear canvas
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grid pattern
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    
+    // Draw targets
+    targets.forEach(target => {
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff3366';
+        ctx.fill();
+        
+        // Middle ring
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        
+        // Center
+        ctx.beginPath();
+        ctx.arc(target.x, target.y, target.radius * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff3366';
+        ctx.fill();
+    });
+    
+    requestAnimationFrame(drawAimGame);
+}
+
+// Aim Battle Socket Events
+socket.on('aimStart', (data) => {
+    if (!aimGame) return;
+    
+    aimGame.isPlaying = true;
+    aimGame.playerHits = 0;
+    aimGame.opponentHits = 0;
+    aimGame.playerTimes = [];
+    aimGame.opponentTimes = [];
+    aimGame.timeLeft = 30;
+    aimGame.lastTargetTime = Date.now();
+    
+    document.getElementById('aimStatus').textContent = 'SHOOT!';
+    document.getElementById('startAimBtn').style.display = 'none';
+    document.getElementById('aimTimer').classList.add('active');
+    document.getElementById('aimScoreOverlay').classList.add('active');
+    
+    // Timer countdown
+    const timerInterval = setInterval(() => {
+        aimGame.timeLeft--;
+        document.getElementById('aimTimer').textContent = aimGame.timeLeft;
+        document.getElementById('overlayTimer').textContent = aimGame.timeLeft;
+        
+        if (aimGame.timeLeft <= 0) {
+            clearInterval(timerInterval);
+        }
+    }, 1000);
+    
+    aimGame.timerInterval = timerInterval;
+});
+
+socket.on('aimTarget', (data) => {
+    if (!aimGame) return;
+    
+    aimGame.targets = [{
+        x: data.x,
+        y: data.y,
+        radius: data.radius
+    }];
+    aimGame.lastTargetTime = Date.now();
+});
+
+socket.on('aimUpdate', (data) => {
+    if (!aimGame) return;
+    
+    aimGame.playerHits = data.playerHits;
+    aimGame.opponentHits = data.opponentHits;
+    
+    const playerAvg = data.playerAvgTime || 0;
+    const opponentAvg = data.opponentAvgTime || 0;
+    
+    document.getElementById('playerHits').textContent = data.playerHits;
+    document.getElementById('opponentHits').textContent = data.opponentHits;
+    document.getElementById('playerAvgTime').textContent = Math.round(playerAvg);
+    document.getElementById('opponentAvgTime').textContent = Math.round(opponentAvg);
+    
+    document.getElementById('overlayPlayerHits').textContent = data.playerHits;
+    document.getElementById('overlayOppHits').textContent = data.opponentHits;
+    document.getElementById('overlayPlayerTime').textContent = Math.round(playerAvg);
+    document.getElementById('overlayOppTime').textContent = Math.round(opponentAvg);
+});
+
+socket.on('aimEnd', (data) => {
+    if (!aimGame) return;
+    
+    aimGame.isPlaying = false;
+    aimGame.targets = [];
+    
+    if (aimGame.timerInterval) {
+        clearInterval(aimGame.timerInterval);
+    }
+    
+    document.getElementById('aimTimer').classList.remove('active');
+    
+    const resultDiv = document.getElementById('aimResult');
+    const isWinner = data.winner === socket.id;
+    
+    if (isWinner) {
+        resultDiv.innerHTML = `🎯 VICTORY! 🎯<br>Hits: ${data.hits} | Avg: ${Math.round(data.avgTime)}ms<br>+${data.winnings} chips!`;
+        resultDiv.className = 'aim-result winner';
+        playerChips += data.winnings;
+    } else {
+        resultDiv.innerHTML = `Target Missed!<br>Hits: ${data.hits} | Avg: ${Math.round(data.avgTime)}ms<br>-${data.cost} chips`;
+        resultDiv.className = 'aim-result loser';
+        playerChips -= data.cost;
+    }
+    
+    resultDiv.style.display = 'block';
+    updatePlayerChips();
+    
+    setTimeout(() => {
+        resultDiv.style.display = 'none';
+        document.getElementById('startAimBtn').style.display = 'block';
+        document.getElementById('aimStatus').textContent = 'Waiting for opponent...';
     }, 5000);
 });
 

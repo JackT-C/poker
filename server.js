@@ -28,6 +28,7 @@ const blackjackRooms = new Map();
 const sumoRooms = new Map();
 const pingpongRooms = new Map();
 const fpsRooms = new Map();
+const aimRooms = new Map();
 const players = new Map();
 
 // Card deck utilities
@@ -735,6 +736,36 @@ io.on('connection', (socket) => {
                     message: `${player.name} entered the arena`
                 });
             }
+        } else if (game === 'aim') {
+            if (!aimRooms.has(roomId)) {
+                aimRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    gameActive: false,
+                    pot: 100,
+                    gameLoop: null,
+                    timeLeft: 30
+                });
+            }
+            
+            const room = aimRooms.get(roomId);
+            if (room.players.length < 2) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    hits: 0,
+                    times: [],
+                    ready: false
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} entered the challenge`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} entered the challenge`
+                });
+            }
         }
     });
     
@@ -1084,6 +1115,55 @@ io.on('connection', (socket) => {
             angle: angle,
             shooter: socket.id
         });
+    });
+    
+    // Aim Battle Events
+    socket.on('aimReady', (roomId) => {
+        const room = aimRooms.get(roomId);
+        if (!room) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.ready = true;
+        }
+        
+        if (room.players.every(p => p.ready)) {
+            startAimGame(room, roomId);
+        }
+    });
+    
+    socket.on('aimHit', ({ roomId, time }) => {
+        const room = aimRooms.get(roomId);
+        if (!room || !room.gameActive) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.hits++;
+            player.times.push(time);
+            
+            // Send update to both players
+            room.players.forEach(p => {
+                const opponent = room.players.find(op => op.id !== p.id);
+                const playerAvgTime = p.times.length > 0 ? p.times.reduce((a, b) => a + b, 0) / p.times.length : 0;
+                const opponentAvgTime = opponent.times.length > 0 ? opponent.times.reduce((a, b) => a + b, 0) / opponent.times.length : 0;
+                
+                io.to(p.id).emit('aimUpdate', {
+                    playerHits: p.hits,
+                    opponentHits: opponent.hits,
+                    playerAvgTime: playerAvgTime,
+                    opponentAvgTime: opponentAvgTime
+                });
+            });
+            
+            // Check win condition
+            if (player.hits >= 20) {
+                endAimGame(room, roomId, socket.id);
+                return;
+            }
+            
+            // Spawn new target
+            spawnAimTarget(room, roomId);
+        }
     });
     
     // Disconnect
@@ -1445,6 +1525,91 @@ function endFPSGame(room, roomId, winnerId) {
     io.to(loser.id).emit('fpsEnd', {
         winner: winnerId,
         kills: loser.kills,
+        winnings: 0,
+        cost: room.pot / 2
+    });
+}
+
+// Aim Battle Game Functions
+function startAimGame(room, roomId) {
+    room.gameActive = true;
+    room.timeLeft = 30;
+    room.players.forEach(p => {
+        p.hits = 0;
+        p.times = [];
+    });
+    
+    io.to(roomId).emit('aimStart', { message: 'Shoot!' });
+    
+    // Spawn first target
+    spawnAimTarget(room, roomId);
+    
+    // Game timer
+    room.gameLoop = setInterval(() => {
+        room.timeLeft--;
+        
+        if (room.timeLeft <= 0) {
+            endAimGameByTime(room, roomId);
+        }
+    }, 1000);
+}
+
+function spawnAimTarget(room, roomId) {
+    if (!room.gameActive) return;
+    
+    const target = {
+        x: Math.random() * 700 + 50, // 50-750
+        y: Math.random() * 500 + 50, // 50-550
+        radius: 30
+    };
+    
+    io.to(roomId).emit('aimTarget', target);
+}
+
+function endAimGameByTime(room, roomId) {
+    if (!room.gameActive) return;
+    
+    room.gameActive = false;
+    
+    if (room.gameLoop) {
+        clearInterval(room.gameLoop);
+        room.gameLoop = null;
+    }
+    
+    // Determine winner by most hits
+    const [player1, player2] = room.players;
+    const winnerId = player1.hits > player2.hits ? player1.id : player2.id;
+    
+    endAimGame(room, roomId, winnerId);
+}
+
+function endAimGame(room, roomId, winnerId) {
+    room.gameActive = false;
+    
+    if (room.gameLoop) {
+        clearInterval(room.gameLoop);
+        room.gameLoop = null;
+    }
+    
+    const winner = room.players.find(p => p.id === winnerId);
+    const loser = room.players.find(p => p.id !== winnerId);
+    
+    const winnings = room.pot / 2;
+    const winnerAvg = winner.times.length > 0 ? winner.times.reduce((a, b) => a + b, 0) / winner.times.length : 0;
+    const loserAvg = loser.times.length > 0 ? loser.times.reduce((a, b) => a + b, 0) / loser.times.length : 0;
+    
+    io.to(winnerId).emit('aimEnd', {
+        winner: winnerId,
+        hits: winner.hits,
+        avgTime: winnerAvg,
+        winnings: winnings,
+        cost: 0
+    });
+    
+    io.to(loser.id).emit('aimEnd', {
+        winner: winnerId,
+        hits: loser.hits,
+        avgTime: loserAvg,
         winnings: 0,
         cost: room.pot / 2
     });
