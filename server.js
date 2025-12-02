@@ -209,7 +209,12 @@ function addBotToBlackjackRoom(roomId) {
 function processBotPokerTurn(room, roomId) {
     const currentPlayer = room.players[room.currentPlayerIndex];
     
-    if (!currentPlayer.isBot || currentPlayer.folded) return;
+    if (!currentPlayer || !currentPlayer.isBot || currentPlayer.folded) {
+        console.log('Bot turn skipped - not a bot or folded');
+        return;
+    }
+    
+    console.log(`Bot ${currentPlayer.name} is taking their turn`);
     
     setTimeout(() => {
         const decision = makeBotPokerDecision(room, currentPlayer);
@@ -229,8 +234,10 @@ function processBotPokerTurn(room, roomId) {
             room.currentBet = decision.amount;
         }
         
-        // Move to next player
-        room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        // Move to next player (skip folded players)
+        do {
+            room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
+        } while (room.players[room.currentPlayerIndex].folded && room.players.filter(p => !p.folded).length > 1);
         
         // Check if round is over
         const activePlayers = room.players.filter(p => !p.folded);
@@ -246,7 +253,10 @@ function processBotPokerTurn(room, roomId) {
             advancePokerRound(room, roomId);
         } else {
             io.to(roomId).emit('gameUpdate', { room });
-            processBotPokerTurn(room, roomId);
+            // Continue with next bot if applicable
+            if (room.players[room.currentPlayerIndex].isBot) {
+                processBotPokerTurn(room, roomId);
+            }
         }
     }, 1500);
 }
@@ -536,14 +546,15 @@ io.on('connection', (socket) => {
         } else if (room.players.every(p => p.folded || p.bet === room.currentBet)) {
             // Move to next round
             advancePokerRound(room, roomId);
-        } else {
-            // Check if next player is bot
-            if (room.players[room.currentPlayerIndex].isBot) {
-                processBotPokerTurn(room, roomId);
-            }
+            return;
         }
         
         io.to(roomId).emit('gameUpdate', { room });
+        
+        // Check if next player is bot
+        if (room.players[room.currentPlayerIndex].isBot) {
+            processBotPokerTurn(room, roomId);
+        }
     });
     
     // Start blackjack game
@@ -715,6 +726,13 @@ function advancePokerRound(room, roomId) {
     room.currentPlayerIndex = 0;
     
     io.to(roomId).emit('roundAdvance', { room });
+    
+    // Check if first player in new round is a bot
+    setTimeout(() => {
+        if (room.players[room.currentPlayerIndex].isBot) {
+            processBotPokerTurn(room, roomId);
+        }
+    }, 500);
 }
 
 function resolveBlackjackRound(room, roomId) {
