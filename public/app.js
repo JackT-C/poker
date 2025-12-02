@@ -134,7 +134,23 @@ function initializeEventListeners() {
     // Table Tennis Controls
     document.getElementById('leavePingPongBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startPingPongBtn').addEventListener('click', () => {
+        // Request fullscreen
+        const pingpongGame = document.getElementById('pingpongGame');
+        if (pingpongGame.requestFullscreen) {
+            pingpongGame.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (pingpongGame.webkitRequestFullscreen) {
+            pingpongGame.webkitRequestFullscreen();
+        } else if (pingpongGame.msRequestFullscreen) {
+            pingpongGame.msRequestFullscreen();
+        }
+        
         socket.emit('pingpongReady', currentRoom);
+    });
+    
+    // FPS Controls
+    document.getElementById('leaveFPSBtn').addEventListener('click', () => leaveGame());
+    document.getElementById('startFPSBtn').addEventListener('click', () => {
+        socket.emit('fpsReady', currentRoom);
     });
     
     // Chat Controls
@@ -359,10 +375,23 @@ function joinGame(game, roomId) {
         document.getElementById('pingpongGame').classList.add('active');
         document.getElementById('pingpongRoomId').textContent = roomId;
         initPingPongGame();
+    } else if (game === 'fps') {
+        document.getElementById('fpsGame').classList.add('active');
+        document.getElementById('fpsRoomId').textContent = roomId;
+        initFPSGame();
     }
 }
 
 function leaveGame() {
+    // Exit fullscreen if active
+    if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
+    } else if (document.webkitFullscreenElement) {
+        document.webkitExitFullscreen();
+    } else if (document.msFullscreenElement) {
+        document.msExitFullscreen();
+    }
+    
     currentGame = null;
     currentRoom = null;
     
@@ -1016,6 +1045,251 @@ socket.on('pingpongEnd', (data) => {
         resultDiv.innerHTML = '';
         document.getElementById('startPingPongBtn').style.display = 'block';
         document.getElementById('pingpongStatus').textContent = 'Waiting for opponent...';
+    }, 5000);
+});
+
+// FPS Game Logic
+let fpsGame = null;
+
+function initFPSGame() {
+    const canvas = document.getElementById('fpsCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    fpsGame = {
+        canvas: canvas,
+        ctx: ctx,
+        player: { x: 100, y: 100, angle: 0, health: 100, kills: 0, deaths: 0 },
+        opponent: { x: 700, y: 500, angle: 0, health: 100 },
+        bullets: [],
+        keys: {},
+        mouse: { x: 0, y: 0 },
+        isPlaying: false,
+        ammo: 30
+    };
+    
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+        if (currentGame === 'fps') {
+            fpsGame.keys[e.key.toLowerCase()] = true;
+        }
+    });
+    
+    document.addEventListener('keyup', (e) => {
+        if (currentGame === 'fps') {
+            fpsGame.keys[e.key.toLowerCase()] = false;
+        }
+    });
+    
+    // Mouse controls
+    canvas.addEventListener('mousemove', (e) => {
+        if (currentGame === 'fps' && fpsGame.isPlaying) {
+            const rect = canvas.getBoundingClientRect();
+            fpsGame.mouse.x = e.clientX - rect.left;
+            fpsGame.mouse.y = e.clientY - rect.top;
+            
+            // Calculate angle
+            fpsGame.player.angle = Math.atan2(
+                fpsGame.mouse.y - fpsGame.player.y,
+                fpsGame.mouse.x - fpsGame.player.x
+            );
+        }
+    });
+    
+    canvas.addEventListener('click', () => {
+        if (currentGame === 'fps' && fpsGame.isPlaying && fpsGame.ammo > 0) {
+            shoot();
+        }
+    });
+    
+    drawFPSGame();
+}
+
+function shoot() {
+    if (!fpsGame || fpsGame.ammo <= 0) return;
+    
+    fpsGame.ammo--;
+    document.getElementById('ammoCount').textContent = fpsGame.ammo;
+    
+    socket.emit('fpsShoot', {
+        roomId: currentRoom,
+        x: fpsGame.player.x,
+        y: fpsGame.player.y,
+        angle: fpsGame.player.angle
+    });
+    
+    // Auto reload
+    if (fpsGame.ammo === 0) {
+        setTimeout(() => {
+            fpsGame.ammo = 30;
+            document.getElementById('ammoCount').textContent = fpsGame.ammo;
+        }, 2000);
+    }
+}
+
+function drawFPSGame() {
+    if (!fpsGame || currentGame !== 'fps') return;
+    
+    const { ctx, canvas, player, opponent, bullets } = fpsGame;
+    
+    // Clear canvas
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw grid
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < canvas.width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+    }
+    for (let y = 0; y < canvas.height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+    }
+    
+    // Draw opponent
+    if (opponent.health > 0) {
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(opponent.x, opponent.y, 20, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Opponent health bar
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(opponent.x - 25, opponent.y - 35, 50 * (opponent.health / 100), 5);
+    }
+    
+    // Draw player
+    ctx.fillStyle = '#2ecc71';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw player direction
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(
+        player.x + Math.cos(player.angle) * 30,
+        player.y + Math.sin(player.angle) * 30
+    );
+    ctx.stroke();
+    
+    // Draw bullets
+    bullets.forEach(bullet => {
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
+    requestAnimationFrame(drawFPSGame);
+}
+
+function updateFPSPlayer() {
+    if (!fpsGame || !fpsGame.isPlaying) return;
+    
+    const speed = 3;
+    let moved = false;
+    
+    if (fpsGame.keys['w'] && fpsGame.player.y > 20) {
+        fpsGame.player.y -= speed;
+        moved = true;
+    }
+    if (fpsGame.keys['s'] && fpsGame.player.y < fpsGame.canvas.height - 20) {
+        fpsGame.player.y += speed;
+        moved = true;
+    }
+    if (fpsGame.keys['a'] && fpsGame.player.x > 20) {
+        fpsGame.player.x -= speed;
+        moved = true;
+    }
+    if (fpsGame.keys['d'] && fpsGame.player.x < fpsGame.canvas.width - 20) {
+        fpsGame.player.x += speed;
+        moved = true;
+    }
+    
+    if (moved) {
+        socket.emit('fpsMove', {
+            roomId: currentRoom,
+            x: fpsGame.player.x,
+            y: fpsGame.player.y,
+            angle: fpsGame.player.angle
+        });
+    }
+}
+
+// FPS Socket Events
+socket.on('fpsStart', (data) => {
+    if (!fpsGame) return;
+    
+    fpsGame.isPlaying = true;
+    fpsGame.player.health = 100;
+    fpsGame.opponent.health = 100;
+    fpsGame.ammo = 30;
+    
+    document.getElementById('fpsStatus').textContent = 'FIGHT!';
+    document.getElementById('startFPSBtn').style.display = 'none';
+    document.getElementById('playerHealth').textContent = '100';
+    document.getElementById('healthFill').style.width = '100%';
+    document.getElementById('ammoCount').textContent = '30';
+    
+    if (!fpsGame.updateInterval) {
+        fpsGame.updateInterval = setInterval(updateFPSPlayer, 16);
+    }
+});
+
+socket.on('fpsUpdate', (data) => {
+    if (!fpsGame) return;
+    
+    fpsGame.opponent.x = data.opponentX;
+    fpsGame.opponent.y = data.opponentY;
+    fpsGame.opponent.angle = data.opponentAngle;
+    fpsGame.opponent.health = data.opponentHealth;
+    fpsGame.player.health = data.playerHealth;
+    fpsGame.bullets = data.bullets || [];
+    
+    // Update HUD
+    document.getElementById('playerHealth').textContent = fpsGame.player.health;
+    document.getElementById('healthFill').style.width = `${fpsGame.player.health}%`;
+    document.getElementById('playerKills').textContent = data.playerKills;
+    document.getElementById('playerDeaths').textContent = data.playerDeaths;
+});
+
+socket.on('fpsEnd', (data) => {
+    if (!fpsGame) return;
+    
+    fpsGame.isPlaying = false;
+    
+    if (fpsGame.updateInterval) {
+        clearInterval(fpsGame.updateInterval);
+        fpsGame.updateInterval = null;
+    }
+    
+    const resultDiv = document.getElementById('fpsResult');
+    const isWinner = data.winner === socket.id;
+    
+    if (isWinner) {
+        resultDiv.innerHTML = `🏆 VICTORY! 🏆<br>Kills: ${data.kills}<br>+${data.winnings} chips!`;
+        resultDiv.className = 'fps-result winner';
+        playerChips += data.winnings;
+    } else {
+        resultDiv.innerHTML = `DEFEATED!<br>Kills: ${data.kills}<br>-${data.cost} chips`;
+        resultDiv.className = 'fps-result loser';
+        playerChips -= data.cost;
+    }
+    
+    updatePlayerChips();
+    
+    setTimeout(() => {
+        resultDiv.innerHTML = '';
+        document.getElementById('startFPSBtn').style.display = 'block';
+        document.getElementById('fpsStatus').textContent = 'Waiting for opponent...';
     }, 5000);
 });
 

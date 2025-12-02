@@ -75,6 +75,14 @@
                     <input type="text" class="room-input" placeholder="Room ID (optional)">
                     <button class="btn btn-primary join-btn">Join Match</button>
                 </div>
+                
+                <div class="game-card" data-game="fps">
+                    <div class="game-icon">🎯</div>
+                    <h2>FPS Arena</h2>
+                    <p>3D first-person shooter duel!</p>
+                    <input type="text" class="room-input" placeholder="Room ID (optional)">
+                    <button class="btn btn-primary join-btn">Join Battle</button>
+                </div>
             </div>
         </div>
         
@@ -257,6 +265,56 @@
             </div>
             
             <button id="startPingPongBtn" class="btn btn-gold start-game-btn">Ready to Play!</button>
+        </div>
+        
+        <!-- FPS Arena Game Screen -->
+        <div id="fpsGame" class="screen game-screen">
+            <div class="game-header">
+                <button id="leaveFPSBtn" class="btn btn-secondary">← Leave Arena</button>
+                <h2>🎯 FPS Arena 🎯</h2>
+                <div class="room-info">
+                    Room: <span id="fpsRoomId"></span>
+                </div>
+            </div>
+            
+            <div class="fps-arena">
+                <div class="fps-hud">
+                    <div class="hud-left">
+                        <div class="health-bar">
+                            <div class="health-label">HP</div>
+                            <div class="health-value" id="playerHealth">100</div>
+                            <div class="health-fill" id="healthFill"></div>
+                        </div>
+                    </div>
+                    <div class="hud-center">
+                        <div class="crosshair"></div>
+                        <div id="fpsStatus" class="fps-status">Waiting for opponent...</div>
+                    </div>
+                    <div class="hud-right">
+                        <div class="ammo-counter">
+                            <div class="ammo-icon">🔫</div>
+                            <div class="ammo-value" id="ammoCount">30</div>
+                        </div>
+                        <div class="score-display">
+                            <div>Kills: <span id="playerKills">0</span></div>
+                            <div>Deaths: <span id="playerDeaths">0</span></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <canvas id="fpsCanvas" width="800" height="600"></canvas>
+                
+                <div class="fps-controls">
+                    <div class="control-info">
+                        <p>🎮 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> - Move | <kbd>Mouse</kbd> - Look | <kbd>Click</kbd> - Shoot</p>
+                        <p>First to 10 kills wins!</p>
+                    </div>
+                </div>
+                
+                <div id="fpsResult" class="fps-result"></div>
+            </div>
+            
+            <button id="startFPSBtn" class="btn btn-gold start-game-btn">Ready for Battle!</button>
         </div>
         
         <!-- Buy Chips Modal -->

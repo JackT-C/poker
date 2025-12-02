@@ -1276,4 +1276,202 @@ body {
         flex-direction: column;
         gap: 15px;
     }
+    
+    #fpsCanvas {
+        width: 100%;
+        height: auto;
+    }
+}
+
+/* FPS Arena Game */
+.fps-arena {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #2c1810 0%, #1a0d08 100%);
+    border: 5px solid #d4af37;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    position: relative;
+}
+
+.fps-hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.hud-left, .hud-right {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(212, 175, 55, 0.5);
+}
+
+.hud-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.crosshair {
+    width: 30px;
+    height: 30px;
+    position: relative;
+    margin: 0 auto 20px;
+}
+
+.crosshair::before,
+.crosshair::after {
+    content: '';
+    position: absolute;
+    background: #ff0000;
+    box-shadow: 0 0 10px #ff0000;
+}
+
+.crosshair::before {
+    width: 2px;
+    height: 30px;
+    left: 14px;
+}
+
+.crosshair::after {
+    width: 30px;
+    height: 2px;
+    top: 14px;
+}
+
+.health-bar {
+    position: relative;
+    width: 200px;
+    height: 30px;
+    background: rgba(255, 0, 0, 0.2);
+    border: 2px solid #ff0000;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.health-label {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    color: #fff;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.health-value {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    color: #fff;
+    font-weight: bold;
+    z-index: 2;
+}
+
+.health-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff0000 0%, #00ff00 100%);
+    transition: width 0.3s ease;
+}
+
+.ammo-counter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5em;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.ammo-icon {
+    font-size: 2em;
+}
+
+.ammo-value {
+    font-weight: bold;
+    color: #d4af37;
+}
+
+.score-display {
+    color: #fff;
+    font-size: 1.1em;
+}
+
+.score-display div {
+    margin: 5px 0;
+}
+
+.score-display span {
+    color: #2ecc71;
+    font-weight: bold;
+}
+
+#fpsCanvas {
+    display: block;
+    margin: 0 auto;
+    background: #1a1a1a;
+    border: 3px solid #000;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    cursor: crosshair;
+}
+
+.fps-controls {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.fps-controls kbd {
+    background: #d4af37;
+    color: #1a1a2e;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 1em;
+    margin: 0 2px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.fps-status {
+    font-size: 1.5em;
+    color: #d4af37;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 10px;
+}
+
+.fps-result {
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-top: 20px;
+    padding: 30px;
+    border-radius: 20px;
+    animation: slideIn 0.5s ease-out;
+}
+
+.fps-result.winner {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.2);
+    border: 3px solid #2ecc71;
+}
+
+.fps-result.loser {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    border: 3px solid #e74c3c;
 }

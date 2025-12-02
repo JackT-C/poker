@@ -27,6 +27,7 @@ const pokerRooms = new Map();
 const blackjackRooms = new Map();
 const sumoRooms = new Map();
 const pingpongRooms = new Map();
+const fpsRooms = new Map();
 const players = new Map();
 
 // Card deck utilities
@@ -700,6 +701,40 @@ io.on('connection', (socket) => {
                     message: `${player.name} entered the match`
                 });
             }
+        } else if (game === 'fps') {
+            if (!fpsRooms.has(roomId)) {
+                fpsRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    gameActive: false,
+                    bullets: [],
+                    pot: 100,
+                    gameLoop: null
+                });
+            }
+            
+            const room = fpsRooms.get(roomId);
+            if (room.players.length < 2) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    x: 100,
+                    y: 100,
+                    angle: 0,
+                    health: 100,
+                    kills: 0,
+                    deaths: 0,
+                    ready: false
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} entered the arena`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} entered the arena`
+                });
+            }
         }
     });
     
@@ -1012,6 +1047,45 @@ io.on('connection', (socket) => {
         }
     });
     
+    // FPS Events
+    socket.on('fpsReady', (roomId) => {
+        const room = fpsRooms.get(roomId);
+        if (!room) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.ready = true;
+        }
+        
+        if (room.players.every(p => p.ready)) {
+            startFPSGame(room, roomId);
+        }
+    });
+    
+    socket.on('fpsMove', ({ roomId, x, y, angle }) => {
+        const room = fpsRooms.get(roomId);
+        if (!room || !room.gameActive) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.x = x;
+            player.y = y;
+            player.angle = angle;
+        }
+    });
+    
+    socket.on('fpsShoot', ({ roomId, x, y, angle }) => {
+        const room = fpsRooms.get(roomId);
+        if (!room || !room.gameActive) return;
+        
+        room.bullets.push({
+            x: x,
+            y: y,
+            angle: angle,
+            shooter: socket.id
+        });
+    });
+    
     // Disconnect
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
@@ -1261,6 +1335,120 @@ app.post('/api/create-payment-intent', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// FPS Game Functions
+function startFPSGame(room, roomId) {
+    room.gameActive = true;
+    room.players[0].x = 100;
+    room.players[0].y = 100;
+    room.players[0].health = 100;
+    room.players[0].kills = 0;
+    room.players[0].deaths = 0;
+    room.players[1].x = 700;
+    room.players[1].y = 500;
+    room.players[1].health = 100;
+    room.players[1].kills = 0;
+    room.players[1].deaths = 0;
+    room.bullets = [];
+    
+    io.to(roomId).emit('fpsStart', { message: 'Fight!' });
+    
+    // Start game loop
+    room.gameLoop = setInterval(() => {
+        updateFPSGame(room, roomId);
+    }, 16);
+}
+
+function updateFPSGame(room, roomId) {
+    if (!room.gameActive) return;
+    
+    // Update bullets
+    room.bullets = room.bullets.filter(bullet => {
+        bullet.x += Math.cos(bullet.angle) * 10;
+        bullet.y += Math.sin(bullet.angle) * 10;
+        
+        // Check bounds
+        if (bullet.x < 0 || bullet.x > 800 || bullet.y < 0 || bullet.y > 600) {
+            return false;
+        }
+        
+        // Check hit on opponent
+        const opponent = room.players.find(p => p.id !== bullet.shooter);
+        if (opponent) {
+            const dx = bullet.x - opponent.x;
+            const dy = bullet.y - opponent.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 20) {
+                opponent.health -= 20;
+                
+                if (opponent.health <= 0) {
+                    const shooter = room.players.find(p => p.id === bullet.shooter);
+                    shooter.kills++;
+                    opponent.deaths++;
+                    
+                    // Reset opponent position
+                    opponent.x = Math.random() * 700 + 50;
+                    opponent.y = Math.random() * 500 + 50;
+                    opponent.health = 100;
+                    
+                    // Check win condition
+                    if (shooter.kills >= 10) {
+                        endFPSGame(room, roomId, shooter.id);
+                        return false;
+                    }
+                }
+                
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    // Emit state
+    room.players.forEach(player => {
+        const opponent = room.players.find(p => p.id !== player.id);
+        io.to(player.id).emit('fpsUpdate', {
+            opponentX: opponent.x,
+            opponentY: opponent.y,
+            opponentAngle: opponent.angle,
+            opponentHealth: opponent.health,
+            playerHealth: player.health,
+            playerKills: player.kills,
+            playerDeaths: player.deaths,
+            bullets: room.bullets
+        });
+    });
+}
+
+function endFPSGame(room, roomId, winnerId) {
+    room.gameActive = false;
+    
+    if (room.gameLoop) {
+        clearInterval(room.gameLoop);
+        room.gameLoop = null;
+    }
+    
+    const winner = room.players.find(p => p.id === winnerId);
+    const loser = room.players.find(p => p.id !== winnerId);
+    
+    const winnings = room.pot / 2;
+    
+    io.to(winnerId).emit('fpsEnd', {
+        winner: winnerId,
+        kills: winner.kills,
+        winnings: winnings,
+        cost: 0
+    });
+    
+    io.to(loser.id).emit('fpsEnd', {
+        winner: winnerId,
+        kills: loser.kills,
+        winnings: 0,
+        cost: room.pot / 2
+    });
+}
 
 // Routes
 app.get('/', (req, res) => {
