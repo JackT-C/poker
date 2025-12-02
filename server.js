@@ -252,9 +252,18 @@ function processBotPokerTurn(room, roomId) {
         if (activePlayers.length === 1) {
             const winner = activePlayers[0];
             winner.chips += room.pot;
+            
+            // Prepare all players' hands for reveal
+            const allHands = room.players.map(p => ({
+                name: p.name,
+                hand: p.hand,
+                folded: p.folded
+            }));
+            
             io.to(roomId).emit('gameEnd', {
                 winner: winner.name,
-                pot: room.pot
+                pot: room.pot,
+                allHands: allHands
             });
             room.gameStarted = false;
             
@@ -556,9 +565,18 @@ io.on('connection', (socket) => {
             // Winner by fold
             const winner = activePlayers[0];
             winner.chips += room.pot;
+            
+            // Prepare all players' hands for reveal
+            const allHands = room.players.map(p => ({
+                name: p.name,
+                hand: p.hand,
+                folded: p.folded
+            }));
+            
             io.to(roomId).emit('gameEnd', {
                 winner: winner.name,
-                pot: room.pot
+                pot: room.pot,
+                allHands: allHands
             });
             room.gameStarted = false;
             
@@ -736,10 +754,20 @@ function advancePokerRound(room, roomId) {
         });
         
         bestPlayer.chips += room.pot;
+        
+        // Prepare all players' hands with evaluations for reveal
+        const allHands = room.players.map(p => ({
+            name: p.name,
+            hand: p.hand,
+            folded: p.folded,
+            evaluation: p.folded ? null : evaluatePokerHand([...p.hand, ...room.communityCards])
+        }));
+        
         io.to(roomId).emit('gameEnd', {
             winner: bestPlayer.name,
             hand: bestHand.name,
-            pot: room.pot
+            pot: room.pot,
+            allHands: allHands
         });
         
         room.gameStarted = false;

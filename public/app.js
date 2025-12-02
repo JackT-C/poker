@@ -153,6 +153,12 @@ socket.on('roundAdvance', (data) => {
 
 socket.on('gameEnd', (data) => {
     showMessage(`${data.winner} wins the pot of $${data.pot}!`, 'success');
+    
+    // Display all players' hands
+    if (data.allHands) {
+        displayAllPlayerHands(data.allHands);
+    }
+    
     // Show reset button after game ends
     setTimeout(() => {
         document.getElementById('resetPokerBtn').style.display = 'inline-block';
@@ -196,6 +202,7 @@ socket.on('gameReset', (data) => {
         document.getElementById('playerHand').innerHTML = '';
         document.getElementById('handEvaluation').innerHTML = '';
         document.getElementById('communityCards').innerHTML = '';
+        document.getElementById('allPlayerHands').style.display = 'none';
         document.getElementById('resetPokerBtn').style.display = 'none';
         showMessage('Game reset! Ready to start a new game.', 'success');
     } else if (currentGame === 'blackjack') {
@@ -246,14 +253,50 @@ function updatePokerRoom(room) {
     // Update pot
     document.getElementById('pot').textContent = `$${room.pot}`;
     
-    // Update turn indicator
+    // Update call button text
+    const player = room.players.find(p => p.id === socket.id);
+    if (player && room.gameStarted) {
+        const callAmount = room.currentBet - player.bet;
+        const callBtn = document.getElementById('callBtn');
+        if (callAmount === 0) {
+            callBtn.textContent = 'Check';
+        } else {
+            callBtn.textContent = `Call $${callAmount}`;
+        }
+    }
+    
+    // Update round info
+    const roundDiv = document.getElementById('roundInfo');
+    if (room.gameStarted) {
+        const roundNames = {
+            'preflop': '🎴 Pre-Flop',
+            'flop': '🃏 Flop',
+            'turn': '🎯 Turn',
+            'river': '🌊 River'
+        };
+        roundDiv.innerHTML = `<div style="color: #d4af37; font-size: 1.2em; font-weight: bold; text-align: center; margin-bottom: 10px;">${roundNames[room.round] || room.round}</div>`;
+    } else {
+        roundDiv.innerHTML = '';
+    }
+    
+    // Update turn indicator with action instructions
     const currentPlayer = room.players[room.currentPlayerIndex];
     const turnDiv = document.getElementById('currentTurn');
     if (currentPlayer && room.gameStarted) {
         const isYourTurn = currentPlayer.id === socket.id;
-        turnDiv.innerHTML = isYourTurn 
-            ? '<div style="color: #2ecc71; font-size: 1.3em; font-weight: bold; animation: pulse 1.5s infinite;">🎯 YOUR TURN!</div>'
-            : `<div style="color: #f39c12; font-size: 1.1em;">Current turn: ${currentPlayer.name}</div>`;
+        if (isYourTurn) {
+            const callAmount = room.currentBet - currentPlayer.bet;
+            let actionText = '';
+            if (callAmount === 0) {
+                actionText = 'CHECK or RAISE to continue';
+            } else {
+                actionText = `CALL $${callAmount}, RAISE, or FOLD`;
+            }
+            turnDiv.innerHTML = `<div style="color: #2ecc71; font-size: 1.3em; font-weight: bold; animation: pulse 1.5s infinite;">🎯 YOUR TURN! ${actionText}</div>`;
+        } else {
+            const action = currentPlayer.isBot ? '🤖 Bot thinking...' : `⏳ Waiting for ${currentPlayer.name}`;
+            turnDiv.innerHTML = `<div style="color: #f39c12; font-size: 1.1em;">${action}</div>`;
+        }
     } else {
         turnDiv.innerHTML = '';
     }
@@ -437,6 +480,42 @@ function evaluatePokerHand(cards) {
     }
     
     return { rank: 0, name: 'High Card', description: `High card: ${highCard}` };
+}
+
+function displayAllPlayerHands(allHands) {
+    const container = document.getElementById('allPlayerHands');
+    if (!container) return;
+    
+    container.innerHTML = '<h3>Final Hands:</h3>';
+    
+    allHands.forEach(playerData => {
+        const playerDiv = document.createElement('div');
+        playerDiv.className = 'player-final-hand';
+        
+        let handHTML = `<div class="player-hand-name">${playerData.name}:</div>`;
+        
+        if (playerData.folded) {
+            handHTML += '<div class="folded-text">Folded</div>';
+        } else {
+            handHTML += '<div class="final-cards">';
+            playerData.hand.forEach(card => {
+                const color = (card.suit === '♥' || card.suit === '♦') ? 'red' : 'black';
+                handHTML += `<div class="card" style="color: ${color}">${card.rank}${card.suit}</div>`;
+            });
+            handHTML += '</div>';
+            
+            if (playerData.evaluation) {
+                const colors = ['#666', '#2196F3', '#4CAF50', '#FF9800', '#FF5722', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#FFD700'];
+                const color = colors[playerData.evaluation.rank];
+                handHTML += `<div class="hand-eval" style="color: ${color}; font-weight: bold;">${playerData.evaluation.name}</div>`;
+            }
+        }
+        
+        playerDiv.innerHTML = handHTML;
+        container.appendChild(playerDiv);
+    });
+    
+    container.style.display = 'block';
 }
 
 function updateHandEvaluation() {
