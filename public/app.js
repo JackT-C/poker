@@ -134,14 +134,14 @@ function initializeEventListeners() {
     // Table Tennis Controls
     document.getElementById('leavePingPongBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startPingPongBtn').addEventListener('click', () => {
-        // Request fullscreen
-        const pingpongGame = document.getElementById('pingpongGame');
-        if (pingpongGame.requestFullscreen) {
-            pingpongGame.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-        } else if (pingpongGame.webkitRequestFullscreen) {
-            pingpongGame.webkitRequestFullscreen();
-        } else if (pingpongGame.msRequestFullscreen) {
-            pingpongGame.msRequestFullscreen();
+        // Request fullscreen for canvas only
+        const canvas = document.getElementById('pingpongCanvas');
+        if (canvas.requestFullscreen) {
+            canvas.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (canvas.webkitRequestFullscreen) {
+            canvas.webkitRequestFullscreen();
+        } else if (canvas.msRequestFullscreen) {
+            canvas.msRequestFullscreen();
         }
         
         socket.emit('pingpongReady', currentRoom);
@@ -150,6 +150,16 @@ function initializeEventListeners() {
     // FPS Controls
     document.getElementById('leaveFPSBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startFPSBtn').addEventListener('click', () => {
+        // Request fullscreen for FPS canvas
+        const canvas = document.getElementById('fpsCanvas');
+        if (canvas.requestFullscreen) {
+            canvas.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (canvas.webkitRequestFullscreen) {
+            canvas.webkitRequestFullscreen();
+        } else if (canvas.msRequestFullscreen) {
+            canvas.msRequestFullscreen();
+        }
+        
         socket.emit('fpsReady', currentRoom);
     });
     
@@ -955,7 +965,7 @@ function updatePingPongPaddle() {
     if (!pingpongGame || !pingpongGame.isPlaying) return;
     
     const paddle = pingpongGame.playerSide === 1 ? pingpongGame.paddle1 : pingpongGame.paddle2;
-    const speed = 8;
+    const speed = 12;
     
     if (pingpongGame.keys['ArrowUp'] && paddle.y > 0) {
         paddle.y -= speed;
