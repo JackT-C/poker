@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const session = require('express-session');
+const auth = require('./auth');
 require('dotenv').config();
 
 const app = express();
@@ -13,6 +15,12 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'casino-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
+}));
 
 // Game state
 const pokerRooms = new Map();
@@ -249,6 +257,12 @@ function processBotPokerTurn(room, roomId) {
                 pot: room.pot
             });
             room.gameStarted = false;
+            
+            // Auto-restart game after 3 seconds
+            setTimeout(() => {
+                resetPokerGame(room, roomId);
+                setTimeout(() => startPokerGame(room, roomId), 500);
+            }, 3000);
         } else if (room.players.every(p => p.folded || p.bet === room.currentBet)) {
             advancePokerRound(room, roomId);
         } else {
@@ -289,6 +303,47 @@ function processBotBlackjackTurns(room, roomId, dealerUpCard) {
             }
         }, index * 2000);
     });
+}
+
+function startPokerGame(room, roomId) {
+    if (!room || room.gameStarted || room.players.length < 2) return;
+    
+    room.gameStarted = true;
+    room.deck = createDeck();
+    room.communityCards = [];
+    room.pot = 0;
+    room.currentBet = 10;
+    room.currentPlayerIndex = 0;
+    room.round = 'preflop';
+    
+    // Deal cards
+    room.players.forEach(player => {
+        player.hand = [room.deck.pop(), room.deck.pop()];
+        player.bet = 0;
+        player.folded = false;
+    });
+    
+    // Small and big blind
+    room.players[0].chips -= 5;
+    room.players[0].bet = 5;
+    room.pot += 5;
+    
+    room.players[1].chips -= 10;
+    room.players[1].bet = 10;
+    room.pot += 10;
+    
+    room.players.forEach(player => {
+        if (!player.isBot) {
+            io.to(player.id).emit('dealCards', { hand: player.hand });
+        }
+    });
+    
+    io.to(roomId).emit('gameStart', { room });
+    
+    // Start bot turns if first player is bot
+    if (room.players[room.currentPlayerIndex].isBot) {
+        processBotPokerTurn(room, roomId);
+    }
 }
 
 function resetPokerGame(room, roomId) {
@@ -457,44 +512,7 @@ io.on('connection', (socket) => {
     // Start poker game
     socket.on('startPoker', (roomId) => {
         const room = pokerRooms.get(roomId);
-        if (!room || room.gameStarted || room.players.length < 2) return;
-        
-        room.gameStarted = true;
-        room.deck = createDeck();
-        room.communityCards = [];
-        room.pot = 0;
-        room.currentBet = 10;
-        room.currentPlayerIndex = 0;
-        room.round = 'preflop';
-        
-        // Deal cards
-        room.players.forEach(player => {
-            player.hand = [room.deck.pop(), room.deck.pop()];
-            player.bet = 0;
-            player.folded = false;
-        });
-        
-        // Small and big blind
-        room.players[0].chips -= 5;
-        room.players[0].bet = 5;
-        room.pot += 5;
-        
-        room.players[1].chips -= 10;
-        room.players[1].bet = 10;
-        room.pot += 10;
-        
-        room.players.forEach(player => {
-            if (!player.isBot) {
-                io.to(player.id).emit('dealCards', { hand: player.hand });
-            }
-        });
-        
-        io.to(roomId).emit('gameStart', { room });
-        
-        // Start bot turns if first player is bot
-        if (room.players[room.currentPlayerIndex].isBot) {
-            processBotPokerTurn(room, roomId);
-        }
+        startPokerGame(room, roomId);
     });
     
     // Reset poker game
@@ -543,6 +561,13 @@ io.on('connection', (socket) => {
                 pot: room.pot
             });
             room.gameStarted = false;
+            
+            // Auto-restart game after 3 seconds
+            setTimeout(() => {
+                resetPokerGame(room, roomId);
+                setTimeout(() => startPokerGame(room, roomId), 500);
+            }, 3000);
+            return;
         } else if (room.players.every(p => p.folded || p.bet === room.currentBet)) {
             // Move to next round
             advancePokerRound(room, roomId);
@@ -718,6 +743,12 @@ function advancePokerRound(room, roomId) {
         });
         
         room.gameStarted = false;
+        
+        // Auto-restart game after 3 seconds
+        setTimeout(() => {
+            resetPokerGame(room, roomId);
+            setTimeout(() => startPokerGame(room, roomId), 500);
+        }, 3000);
         return;
     }
     
@@ -773,6 +804,61 @@ function resolveBlackjackRound(room, roomId) {
     
     room.gameStarted = false;
 }
+
+// Authentication endpoints
+app.post('/api/register', (req, res) => {
+    const { username, password } = req.body;
+    const result = auth.registerUser(username, password);
+    
+    if (result.success) {
+        req.session.user = result.user;
+        res.json(result);
+    } else {
+        res.status(400).json(result);
+    }
+});
+
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    const result = auth.loginUser(username, password);
+    
+    if (result.success) {
+        req.session.user = result.user;
+        res.json(result);
+    } else {
+        res.status(401).json(result);
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.json({ success: true, message: 'Logged out successfully' });
+});
+
+app.get('/api/user', (req, res) => {
+    if (req.session.user) {
+        const user = auth.getUser(req.session.user.username);
+        res.json({ success: true, user });
+    } else {
+        res.json({ success: false, user: null });
+    }
+});
+
+app.post('/api/save-chips', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Not logged in' });
+    }
+    
+    const { chips } = req.body;
+    const success = auth.updateUserChips(req.session.user.username, chips);
+    
+    if (success) {
+        req.session.user.chips = chips;
+        res.json({ success: true, message: 'Chips saved' });
+    } else {
+        res.status(500).json({ success: false, message: 'Failed to save chips' });
+    }
+});
 
 // Payment endpoint
 app.post('/api/create-payment-intent', async (req, res) => {
