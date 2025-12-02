@@ -134,14 +134,14 @@ function initializeEventListeners() {
     // Table Tennis Controls
     document.getElementById('leavePingPongBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startPingPongBtn').addEventListener('click', () => {
-        // Request fullscreen for canvas only
-        const canvas = document.getElementById('pingpongCanvas');
-        if (canvas.requestFullscreen) {
-            canvas.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-        } else if (canvas.webkitRequestFullscreen) {
-            canvas.webkitRequestFullscreen();
-        } else if (canvas.msRequestFullscreen) {
-            canvas.msRequestFullscreen();
+        // Request fullscreen for canvas container to show overlay
+        const container = document.getElementById('pingpongCanvas').parentElement;
+        if (container.requestFullscreen) {
+            container.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
         }
         
         socket.emit('pingpongReady', currentRoom);
@@ -150,17 +150,23 @@ function initializeEventListeners() {
     // FPS Controls
     document.getElementById('leaveFPSBtn').addEventListener('click', () => leaveGame());
     document.getElementById('startFPSBtn').addEventListener('click', () => {
-        // Request fullscreen for FPS canvas
-        const canvas = document.getElementById('fpsCanvas');
-        if (canvas.requestFullscreen) {
-            canvas.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
-        } else if (canvas.webkitRequestFullscreen) {
-            canvas.webkitRequestFullscreen();
-        } else if (canvas.msRequestFullscreen) {
-            canvas.msRequestFullscreen();
+        // Request fullscreen for FPS canvas container to show overlay
+        const container = document.getElementById('fpsCanvas').parentElement;
+        if (container.requestFullscreen) {
+            container.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+        } else if (container.webkitRequestFullscreen) {
+            container.webkitRequestFullscreen();
+        } else if (container.msRequestFullscreen) {
+            container.msRequestFullscreen();
         }
         
         socket.emit('fpsReady', currentRoom);
+    });
+    
+    // Aim Battle Controls
+    document.getElementById('leaveAimBtn').addEventListener('click', () => leaveGame());
+    document.getElementById('startAimBtn').addEventListener('click', () => {
+        socket.emit('aimReady', currentRoom);
     });
     
     // Chat Controls
@@ -997,6 +1003,9 @@ socket.on('pingpongStart', (data) => {
     document.getElementById('pingpongStatus').textContent = `You are Player ${data.playerSide}`;
     document.getElementById('startPingPongBtn').style.display = 'none';
     
+    // Show overlay for fullscreen
+    document.getElementById('pingpongScoreOverlay').classList.add('active');
+    
     // Start sending paddle updates
     if (!pingpongGame.updateInterval) {
         pingpongGame.updateInterval = setInterval(updatePingPongPaddle, 16); // 60 FPS
@@ -1023,6 +1032,10 @@ socket.on('pingpongUpdate', (data) => {
     // Update scoreboard
     document.querySelector('#player1Score .score-value').textContent = data.score1;
     document.querySelector('#player2Score .score-value').textContent = data.score2;
+    
+    // Update overlay scores for fullscreen
+    document.getElementById('overlayScore1').textContent = data.score1;
+    document.getElementById('overlayScore2').textContent = data.score2;
 });
 
 socket.on('pingpongEnd', (data) => {
@@ -1119,6 +1132,7 @@ function shoot() {
     
     fpsGame.ammo--;
     document.getElementById('ammoCount').textContent = fpsGame.ammo;
+    document.getElementById('overlayAmmo').textContent = fpsGame.ammo;
     
     socket.emit('fpsShoot', {
         roomId: currentRoom,
@@ -1132,6 +1146,7 @@ function shoot() {
         setTimeout(() => {
             fpsGame.ammo = 30;
             document.getElementById('ammoCount').textContent = fpsGame.ammo;
+            document.getElementById('overlayAmmo').textContent = fpsGame.ammo;
         }, 2000);
     }
 }
@@ -1249,6 +1264,13 @@ socket.on('fpsStart', (data) => {
     document.getElementById('healthFill').style.width = '100%';
     document.getElementById('ammoCount').textContent = '30';
     
+    // Show overlay for fullscreen
+    document.getElementById('fpsScoreOverlay').classList.add('active');
+    document.getElementById('overlayHealth').textContent = '100';
+    document.getElementById('overlayKills').textContent = '0';
+    document.getElementById('overlayDeaths').textContent = '0';
+    document.getElementById('overlayAmmo').textContent = '30';
+    
     if (!fpsGame.updateInterval) {
         fpsGame.updateInterval = setInterval(updateFPSPlayer, 16);
     }
@@ -1269,6 +1291,11 @@ socket.on('fpsUpdate', (data) => {
     document.getElementById('healthFill').style.width = `${fpsGame.player.health}%`;
     document.getElementById('playerKills').textContent = data.playerKills;
     document.getElementById('playerDeaths').textContent = data.playerDeaths;
+    
+    // Update overlay for fullscreen
+    document.getElementById('overlayHealth').textContent = fpsGame.player.health;
+    document.getElementById('overlayKills').textContent = data.playerKills;
+    document.getElementById('overlayDeaths').textContent = data.playerDeaths;
 });
 
 socket.on('fpsEnd', (data) => {

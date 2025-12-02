@@ -83,6 +83,14 @@
                     <input type="text" class="room-input" placeholder="Room ID (optional)">
                     <button class="btn btn-primary join-btn">Join Battle</button>
                 </div>
+                
+                <div class="game-card" data-game="aim">
+                    <div class="game-icon">🎪</div>
+                    <h2>Aim Battle</h2>
+                    <p>Hit targets fastest - Best reflexes win!</p>
+                    <input type="text" class="room-input" placeholder="Room ID (optional)">
+                    <button class="btn btn-primary join-btn">Join Challenge</button>
+                </div>
             </div>
         </div>
         
@@ -251,7 +259,13 @@
                     </div>
                 </div>
                 
-                <canvas id="pingpongCanvas" width="800" height="500"></canvas>
+                <div class="canvas-container">
+                    <canvas id="pingpongCanvas" width="800" height="500"></canvas>
+                    <div id="pingpongScoreOverlay" class="score-overlay">
+                        <div class="overlay-score">P1: <span id="overlayScore1">0</span></div>
+                        <div class="overlay-score">P2: <span id="overlayScore2">0</span></div>
+                    </div>
+                </div>
                 
                 <div class="pingpong-controls">
                     <div class="control-info">
@@ -302,7 +316,14 @@
                     </div>
                 </div>
                 
-                <canvas id="fpsCanvas" width="800" height="600"></canvas>
+                <div class="canvas-container">
+                    <canvas id="fpsCanvas" width="800" height="600"></canvas>
+                    <div id="fpsScoreOverlay" class="score-overlay fps-overlay">
+                        <div class="overlay-health">❤️ <span id="overlayHealth">100</span></div>
+                        <div class="overlay-kills">💀 <span id="overlayKills">0</span>/<span id="overlayDeaths">0</span></div>
+                        <div class="overlay-ammo">🔫 <span id="overlayAmmo">30</span></div>
+                    </div>
+                </div>
                 
                 <div class="fps-controls">
                     <div class="control-info">
@@ -345,6 +366,53 @@
                 
                 <div id="paymentElement"></div>
                 <button id="submitPayment" class="btn btn-gold" style="display: none;">Complete Purchase</button>
+            </div>
+        </div>
+        
+        <!-- Aim Battle Screen -->
+        <div id="aimGame" class="screen game-screen">
+            <div class="game-header">
+                <button id="leaveAimBtn" class="btn btn-secondary">← Leave Arena</button>
+                <h2>🎪 Aim Battle</h2>
+                <div class="room-info">
+                    Room: <span id="aimRoomId"></span>
+                </div>
+            </div>
+            
+            <div class="aim-arena">
+                <div class="aim-hud">
+                    <div class="aim-score-board">
+                        <div class="player-score">
+                            <span class="score-label">You</span>
+                            <span id="playerHits" class="score-value">0</span>
+                            <span class="score-time">⏱ <span id="playerAvgTime">0</span>ms</span>
+                        </div>
+                        <div class="vs-divider">VS</div>
+                        <div class="opponent-score">
+                            <span class="score-label">Opponent</span>
+                            <span id="opponentHits" class="score-value">0</span>
+                            <span class="score-time">⏱ <span id="opponentAvgTime">0</span>ms</span>
+                        </div>
+                    </div>
+                    <div id="aimStatus" class="aim-status">Waiting for opponent...</div>
+                    <div id="aimTimer" class="aim-timer">30</div>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="aimCanvas" width="800" height="600"></canvas>
+                    <div id="aimScoreOverlay" class="score-overlay aim-overlay">
+                        <div class="overlay-score">You: <span id="overlayPlayerHits">0</span> ⏱<span id="overlayPlayerTime">0</span>ms</div>
+                        <div class="overlay-score">Opp: <span id="overlayOppHits">0</span> ⏱<span id="overlayOppTime">0</span>ms</div>
+                        <div class="overlay-timer">⏰ <span id="overlayTimer">30</span>s</div>
+                    </div>
+                </div>
+                
+                <div class="aim-controls">
+                    <p class="control-hint">Click the targets as fast as you can! First to 20 hits wins!</p>
+                    <button id="startAimBtn" class="btn btn-gold">Start Challenge!</button>
+                </div>
+                
+                <div id="aimResult" class="aim-result"></div>
             </div>
         </div>
         

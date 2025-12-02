@@ -1475,3 +1475,217 @@ body {
     background: rgba(231, 76, 60, 0.2);
     border: 3px solid #e74c3c;
 }
+
+/* Aim Battle Game */
+.aim-arena {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
+    border: 5px solid #d4af37;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    position: relative;
+}
+
+.aim-hud {
+    margin-bottom: 20px;
+}
+
+.aim-score-board {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 20px;
+    border-radius: 15px;
+    border: 2px solid rgba(212, 175, 55, 0.5);
+    margin-bottom: 15px;
+}
+
+.player-score, .opponent-score {
+    flex: 1;
+    text-align: center;
+}
+
+.score-label {
+    display: block;
+    font-size: 14px;
+    color: #aaa;
+    margin-bottom: 5px;
+}
+
+.score-value {
+    display: block;
+    font-size: 48px;
+    font-weight: bold;
+    color: #d4af37;
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+}
+
+.score-time {
+    display: block;
+    font-size: 14px;
+    color: #ffcc00;
+    margin-top: 5px;
+}
+
+.vs-divider {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    padding: 0 20px;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.aim-status {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.aim-timer {
+    text-align: center;
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff3366;
+    text-shadow: 0 0 20px rgba(255, 51, 102, 0.8);
+    display: none;
+}
+
+.aim-timer.active {
+    display: block;
+}
+
+#aimCanvas {
+    width: 100%;
+    border: 3px solid #d4af37;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
+    cursor: crosshair;
+    display: block;
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+.aim-controls {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.control-hint {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.aim-result {
+    display: none;
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+    margin-top: 20px;
+    padding: 30px;
+    border-radius: 20px;
+    animation: slideIn 0.5s ease-out;
+}
+
+.aim-result.winner {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.2);
+    border: 3px solid #2ecc71;
+}
+
+.aim-result.loser {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    border: 3px solid #e74c3c;
+}
+
+/* Score Overlay for Fullscreen Canvases */
+.canvas-container {
+    position: relative;
+    display: inline-block;
+}
+
+.score-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(212, 175, 55, 0.6);
+    display: none;
+    z-index: 1000;
+    pointer-events: none;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.score-overlay.active {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.overlay-score {
+    color: #d4af37;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
+}
+
+.fps-overlay {
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.overlay-health {
+    color: #ff3366;
+    font-size: 20px;
+}
+
+.overlay-kills {
+    color: #d4af37;
+    font-size: 20px;
+}
+
+.overlay-ammo {
+    color: #ffcc00;
+    font-size: 20px;
+}
+
+.aim-overlay {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.overlay-timer {
+    color: #ff3366;
+    font-size: 24px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Fullscreen canvas adjustments */
+.canvas-container:fullscreen .score-overlay,
+.canvas-container:-webkit-full-screen .score-overlay,
+.canvas-container:-moz-full-screen .score-overlay,
+.canvas-container:-ms-fullscreen .score-overlay {
+    display: flex !important;
+}
+
+.canvas-container:fullscreen canvas,
+.canvas-container:-webkit-full-screen canvas,
+.canvas-container:-moz-full-screen canvas,
+.canvas-container:-ms-fullscreen canvas {
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+}
