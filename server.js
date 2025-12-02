@@ -484,6 +484,10 @@ io.on('connection', (socket) => {
                     room: room,
                     message: `${player.name} joined the table`
                 });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} joined the table`
+                });
             }
         } else if (game === 'blackjack') {
             if (!blackjackRooms.has(roomId)) {
@@ -512,6 +516,10 @@ io.on('connection', (socket) => {
                     room: room,
                     message: `${player.name} joined the table`
                 });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} joined the table`
+                });
             }
         } else if (game === 'sumo') {
             if (!sumoRooms.has(roomId)) {
@@ -538,6 +546,10 @@ io.on('connection', (socket) => {
                 });
                 
                 io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} entered the arena`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
                     message: `${player.name} entered the arena`
                 });
             }
@@ -770,6 +782,19 @@ io.on('connection', (socket) => {
         }
     });
     
+    // Chat handler
+    socket.on('chatMessage', ({ roomId, message, sender }) => {
+        if (!roomId || !message || message.length > 200) return;
+        
+        // Broadcast message to all players in the room
+        io.to(roomId).emit('chatMessage', {
+            sender: sender,
+            message: message,
+            senderId: socket.id,
+            timestamp: Date.now()
+        });
+    });
+    
     // Sumo Clicker handlers
     socket.on('sumoReady', (roomId) => {
         const room = sumoRooms.get(roomId);
@@ -821,6 +846,10 @@ io.on('connection', (socket) => {
                     room,
                     message: `${player.name} left the table`
                 });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} left the table`
+                });
             }
             
             // Remove from blackjack room
@@ -831,6 +860,10 @@ io.on('connection', (socket) => {
                     room,
                     message: `${player.name} left the table`
                 });
+                
+                io.to(roomId).emit('chatSystem', {
+                    message: `${player.name} left the table`
+                });
             }
             
             // Remove from sumo room
@@ -839,6 +872,10 @@ io.on('connection', (socket) => {
                 room.players = room.players.filter(p => p.id !== socket.id);
                 room.ready = room.ready.filter(id => id !== socket.id);
                 io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} left the arena`
+                });
+                
+                io.to(roomId).emit('chatSystem', {
                     message: `${player.name} left the arena`
                 });
             }

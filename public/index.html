@@ -245,6 +245,21 @@
         
         <!-- Messages -->
         <div id="messageContainer" class="message-container"></div>
+        
+        <!-- Live Chat -->
+        <div id="chatWidget" class="chat-widget">
+            <div class="chat-header">
+                <span class="chat-title">💬 Live Chat</span>
+                <button id="toggleChat" class="chat-toggle">−</button>
+            </div>
+            <div class="chat-body">
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <input type="text" id="chatInput" class="chat-input" placeholder="Type a message..." maxlength="200">
+                    <button id="chatSend" class="chat-send-btn">Send</button>
+                </div>
+            </div>
+        </div>
     </div>
     
     <script src="app.js"></script>

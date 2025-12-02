@@ -122,6 +122,15 @@ function initializeEventListeners() {
             socket.emit('sumoClick', { roomId: currentRoom, clicks: sumoClickCount });
         }
     });
+    
+    // Chat Controls
+    document.getElementById('toggleChat').addEventListener('click', toggleChat);
+    document.getElementById('chatSend').addEventListener('click', sendChatMessage);
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
 }
 
 // Socket Event Handlers
@@ -206,6 +215,15 @@ socket.on('blackjackEnd', (data) => {
 
 socket.on('error', (data) => {
     showMessage(data.message, 'error');
+});
+
+// Chat Socket Events
+socket.on('chatMessage', (data) => {
+    addChatMessage(data.sender, data.message, data.senderId === socket.id);
+});
+
+socket.on('chatSystem', (data) => {
+    addChatSystemMessage(data.message);
 });
 
 socket.on('gameReset', (data) => {
@@ -761,6 +779,61 @@ function loadPlayerData() {
     if (savedName) {
         document.getElementById('playerName').value = savedName;
     }
+}
+
+// Chat Functions
+function toggleChat() {
+    const chatWidget = document.getElementById('chatWidget');
+    const toggleBtn = document.getElementById('toggleChat');
+    
+    chatWidget.classList.toggle('minimized');
+    toggleBtn.textContent = chatWidget.classList.contains('minimized') ? '+' : '−';
+}
+
+function sendChatMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!message || !currentRoom) return;
+    
+    socket.emit('chatMessage', {
+        roomId: currentRoom,
+        message: message,
+        sender: playerName || 'Anonymous'
+    });
+    
+    input.value = '';
+}
+
+function addChatMessage(sender, message, isOwn) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isOwn ? 'own' : 'other'}`;
+    
+    if (!isOwn) {
+        const senderSpan = document.createElement('div');
+        senderSpan.className = 'chat-sender';
+        senderSpan.textContent = sender;
+        messageDiv.appendChild(senderSpan);
+    }
+    
+    const textDiv = document.createElement('div');
+    textDiv.className = 'chat-text';
+    textDiv.textContent = message;
+    messageDiv.appendChild(textDiv);
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function addChatSystemMessage(message) {
+    const chatMessages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message system';
+    messageDiv.textContent = message;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // Window event handlers
