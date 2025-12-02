@@ -69,6 +69,7 @@ function initializeEventListeners() {
     });
     
     document.getElementById('addPokerBotBtn').addEventListener('click', () => {
+        console.log('Adding poker bot to room:', currentRoom);
         socket.emit('addBot', { roomId: currentRoom, game: 'poker' });
     });
     
@@ -100,6 +101,7 @@ function initializeEventListeners() {
     });
     
     document.getElementById('addBlackjackBotBtn').addEventListener('click', () => {
+        console.log('Adding blackjack bot to room:', currentRoom);
         socket.emit('addBot', { roomId: currentRoom, game: 'blackjack' });
     });
     

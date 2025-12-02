@@ -330,36 +330,47 @@ io.on('connection', (socket) => {
     
     // Add bot to room
     socket.on('addBot', ({ roomId, game }) => {
+        console.log(`Adding bot to ${game} room ${roomId}`);
         let bot = null;
         
         if (game === 'poker') {
             const room = pokerRooms.get(roomId);
+            console.log('Poker room exists:', !!room);
             if (!room) {
+                console.log('Poker room not found');
                 socket.emit('error', { message: 'Room not found' });
                 return;
             }
+            console.log('Current players:', room.players.length);
             bot = addBotToPokerRoom(roomId);
             if (bot) {
+                console.log('Bot added:', bot.name);
                 io.to(roomId).emit('roomUpdate', {
                     room: pokerRooms.get(roomId),
                     message: `${bot.name} joined the table`
                 });
             } else {
+                console.log('Cannot add bot - room full');
                 socket.emit('error', { message: 'Cannot add more bots (max 6 players)' });
             }
         } else if (game === 'blackjack') {
             const room = blackjackRooms.get(roomId);
+            console.log('Blackjack room exists:', !!room);
             if (!room) {
+                console.log('Blackjack room not found');
                 socket.emit('error', { message: 'Room not found' });
                 return;
             }
+            console.log('Current players:', room.players.length);
             bot = addBotToBlackjackRoom(roomId);
             if (bot) {
+                console.log('Bot added:', bot.name);
                 io.to(roomId).emit('roomUpdate', {
                     room: blackjackRooms.get(roomId),
                     message: `${bot.name} joined the table`
                 });
             } else {
+                console.log('Cannot add bot - room full');
                 socket.emit('error', { message: 'Cannot add more bots (max 5 players)' });
             }
         }
