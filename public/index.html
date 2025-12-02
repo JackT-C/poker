@@ -59,6 +59,14 @@
                     <input type="text" class="room-input" placeholder="Room ID (optional)">
                     <button class="btn btn-primary join-btn">Join Table</button>
                 </div>
+                
+                <div class="game-card" data-game="sumo">
+                    <div class="game-icon">🥊</div>
+                    <h2>Sumo Clicker</h2>
+                    <p>1v1 clicking duel - Fastest wins!</p>
+                    <input type="text" class="room-input" placeholder="Room ID (optional)">
+                    <button class="btn btn-primary join-btn">Join Arena</button>
+                </div>
             </div>
         </div>
         
@@ -153,6 +161,55 @@
                 <button id="addBlackjackBotBtn" class="btn btn-secondary">🤖 Add Bot Player</button>
                 <button id="resetBlackjackBtn" class="btn btn-secondary" style="display:none;">🔄 New Round</button>
             </div>
+        </div>
+        
+        <!-- Sumo Clicker Game Screen -->
+        <div id="sumoGame" class="screen game-screen">
+            <div class="game-header">
+                <button id="leaveSumoBtn" class="btn btn-secondary">← Leave Arena</button>
+                <h2>⚡ Sumo Clicker Battle ⚡</h2>
+                <div class="room-info">
+                    Room: <span id="sumoRoomId"></span>
+                </div>
+            </div>
+            
+            <div class="sumo-arena">
+                <div class="sumo-status">
+                    <div id="sumoStatus" class="status-text">Waiting for opponent...</div>
+                    <div id="sumoTimer" class="sumo-timer"></div>
+                </div>
+                
+                <div class="sumo-players">
+                    <div class="sumo-player" id="sumoPlayer1">
+                        <div class="sumo-wrestler">🤼</div>
+                        <div class="player-name">Waiting...</div>
+                        <div class="click-count">0 clicks</div>
+                        <div class="click-bar">
+                            <div class="click-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="sumo-vs">VS</div>
+                    
+                    <div class="sumo-player" id="sumoPlayer2">
+                        <div class="sumo-wrestler">🤼</div>
+                        <div class="player-name">Waiting...</div>
+                        <div class="click-count">0 clicks</div>
+                        <div class="click-bar">
+                            <div class="click-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="sumoClickBtn" class="sumo-click-button" disabled>
+                    <span class="btn-text">CLICK ME!</span>
+                    <span class="btn-subtitle">Wait for countdown...</span>
+                </button>
+                
+                <div id="sumoResult" class="sumo-result"></div>
+            </div>
+            
+            <button id="startSumoBtn" class="btn btn-gold start-game-btn">Ready to Fight!</button>
         </div>
         
         <!-- Buy Chips Modal -->

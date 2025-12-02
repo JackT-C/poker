@@ -25,6 +25,7 @@ app.use(session({
 // Game state
 const pokerRooms = new Map();
 const blackjackRooms = new Map();
+const sumoRooms = new Map();
 const players = new Map();
 
 // Card deck utilities
@@ -389,6 +390,51 @@ function resetBlackjackGame(room, roomId) {
     io.to(roomId).emit('gameReset', { room });
 }
 
+// Sumo game function
+function startSumoGame(room, roomId) {
+    // Reset click counts
+    room.players.forEach(p => p.clicks = 0);
+    
+    // Countdown 3, 2, 1, GO
+    let countdown = 3;
+    const countdownInterval = setInterval(() => {
+        if (countdown > 0) {
+            io.to(roomId).emit('sumoCountdown', { count: countdown });
+            countdown--;
+        } else {
+            clearInterval(countdownInterval);
+            io.to(roomId).emit('sumoCountdown', { count: 0 }); // GO signal
+            
+            // End game after duration
+            setTimeout(() => {
+                endSumoGame(room, roomId);
+            }, room.gameDuration);
+        }
+    }, 1000);
+}
+
+function endSumoGame(room, roomId) {
+    room.gameStarted = false;
+    
+    // Find winner (most clicks)
+    const winner = room.players.reduce((prev, current) => 
+        (current.clicks > prev.clicks) ? current : prev
+    );
+    
+    const winnings = 100;
+    const cost = 50;
+    
+    io.to(roomId).emit('sumoEnd', {
+        winner: winner,
+        winnings: winnings,
+        cost: cost
+    });
+    
+    // Reset room
+    room.ready = [];
+    room.players.forEach(p => p.clicks = 0);
+}
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
@@ -465,6 +511,34 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('roomUpdate', {
                     room: room,
                     message: `${player.name} joined the table`
+                });
+            }
+        } else if (game === 'sumo') {
+            if (!sumoRooms.has(roomId)) {
+                sumoRooms.set(roomId, {
+                    id: roomId,
+                    players: [],
+                    ready: [],
+                    gameStarted: false,
+                    gameDuration: 10000 // 10 seconds
+                });
+            }
+            
+            const room = sumoRooms.get(roomId);
+            if (room.players.length < 2) {
+                room.players.push({
+                    id: socket.id,
+                    name: player.name,
+                    clicks: 0
+                });
+                
+                io.to(roomId).emit('sumoUpdate', {
+                    players: room.players,
+                    ready: room.ready
+                });
+                
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} entered the arena`
                 });
             }
         }
@@ -696,6 +770,41 @@ io.on('connection', (socket) => {
         }
     });
     
+    // Sumo Clicker handlers
+    socket.on('sumoReady', (roomId) => {
+        const room = sumoRooms.get(roomId);
+        if (!room || room.gameStarted) return;
+        
+        if (!room.ready.includes(socket.id)) {
+            room.ready.push(socket.id);
+        }
+        
+        io.to(roomId).emit('sumoUpdate', {
+            players: room.players,
+            ready: room.ready
+        });
+        
+        // Start game when both players are ready
+        if (room.ready.length === 2 && room.players.length === 2) {
+            room.gameStarted = true;
+            startSumoGame(room, roomId);
+        }
+    });
+    
+    socket.on('sumoClick', ({ roomId, clicks }) => {
+        const room = sumoRooms.get(roomId);
+        if (!room || !room.gameStarted) return;
+        
+        const player = room.players.find(p => p.id === socket.id);
+        if (player) {
+            player.clicks = clicks;
+            
+            io.to(roomId).emit('sumoProgress', {
+                players: room.players
+            });
+        }
+    });
+    
     // Disconnect
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
@@ -721,6 +830,16 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('roomUpdate', {
                     room,
                     message: `${player.name} left the table`
+                });
+            }
+            
+            // Remove from sumo room
+            if (sumoRooms.has(roomId)) {
+                const room = sumoRooms.get(roomId);
+                room.players = room.players.filter(p => p.id !== socket.id);
+                room.ready = room.ready.filter(id => id !== socket.id);
+                io.to(roomId).emit('roomUpdate', {
+                    message: `${player.name} left the arena`
                 });
             }
         }

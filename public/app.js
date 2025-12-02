@@ -108,6 +108,20 @@ function initializeEventListeners() {
     document.getElementById('resetBlackjackBtn').addEventListener('click', () => {
         socket.emit('resetBlackjack', currentRoom);
     });
+    
+    // Sumo Clicker Controls
+    document.getElementById('leaveSumoBtn').addEventListener('click', () => leaveGame());
+    document.getElementById('startSumoBtn').addEventListener('click', () => {
+        socket.emit('sumoReady', currentRoom);
+    });
+    
+    let sumoClickCount = 0;
+    document.getElementById('sumoClickBtn').addEventListener('click', () => {
+        if (!document.getElementById('sumoClickBtn').disabled) {
+            sumoClickCount++;
+            socket.emit('sumoClick', { roomId: currentRoom, clicks: sumoClickCount });
+        }
+    });
 }
 
 // Socket Event Handlers
@@ -214,6 +228,78 @@ socket.on('gameReset', (data) => {
     }
 });
 
+// Sumo Socket Events
+socket.on('sumoUpdate', (data) => {
+    updateSumoRoom(data);
+});
+
+socket.on('sumoCountdown', (data) => {
+    const timerDiv = document.getElementById('sumoTimer');
+    const btn = document.getElementById('sumoClickBtn');
+    const status = document.getElementById('sumoStatus');
+    
+    if (data.count > 0) {
+        timerDiv.textContent = data.count;
+        status.textContent = 'Get ready...';
+        btn.disabled = true;
+        btn.querySelector('.btn-subtitle').textContent = `Starting in ${data.count}...`;
+    } else {
+        timerDiv.textContent = 'CLICK!';
+        status.textContent = '⚡ CLICK AS FAST AS YOU CAN! ⚡';
+        btn.disabled = false;
+        btn.querySelector('.btn-text').textContent = 'CLICK ME!';
+        btn.querySelector('.btn-subtitle').textContent = 'Click repeatedly!';
+    }
+});
+
+socket.on('sumoProgress', (data) => {
+    // Update both players' progress
+    data.players.forEach((player, index) => {
+        const playerDiv = document.getElementById(`sumoPlayer${index + 1}`);
+        if (playerDiv) {
+            playerDiv.querySelector('.player-name').textContent = player.name;
+            playerDiv.querySelector('.click-count').textContent = `${player.clicks} clicks`;
+            
+            const maxClicks = Math.max(...data.players.map(p => p.clicks), 1);
+            const percentage = (player.clicks / maxClicks) * 100;
+            playerDiv.querySelector('.click-progress').style.width = `${percentage}%`;
+            
+            if (player.id === socket.id) {
+                playerDiv.classList.add('active');
+            }
+        }
+    });
+});
+
+socket.on('sumoEnd', (data) => {
+    const btn = document.getElementById('sumoClickBtn');
+    const resultDiv = document.getElementById('sumoResult');
+    const status = document.getElementById('sumoStatus');
+    
+    btn.disabled = true;
+    status.textContent = 'Battle Complete!';
+    
+    if (data.winner.id === socket.id) {
+        resultDiv.innerHTML = `🏆 YOU WIN! 🏆<br>${data.winner.clicks} clicks<br>+${data.winnings} chips!`;
+        resultDiv.className = 'sumo-result winner';
+        playerChips += data.winnings;
+        updatePlayerChips();
+    } else {
+        resultDiv.innerHTML = `You Lost!<br>${data.winner.name} won with ${data.winner.clicks} clicks<br>-${data.cost} chips`;
+        resultDiv.className = 'sumo-result loser';
+        playerChips -= data.cost;
+        updatePlayerChips();
+    }
+    
+    // Reset after 5 seconds
+    setTimeout(() => {
+        resultDiv.innerHTML = '';
+        btn.disabled = false;
+        btn.querySelector('.btn-subtitle').textContent = 'Wait for countdown...';
+        document.getElementById('startSumoBtn').style.display = 'block';
+    }, 5000);
+});
+
 // Game Functions
 function joinGame(game, roomId) {
     currentGame = game;
@@ -234,6 +320,9 @@ function joinGame(game, roomId) {
     } else if (game === 'blackjack') {
         document.getElementById('blackjackGame').classList.add('active');
         document.getElementById('blackjackRoomId').textContent = roomId;
+    } else if (game === 'sumo') {
+        document.getElementById('sumoGame').classList.add('active');
+        document.getElementById('sumoRoomId').textContent = roomId;
     }
 }
 
@@ -613,10 +702,35 @@ function generateRoomId() {
     return 'room_' + Math.random().toString(36).substr(2, 9);
 }
 
-function showMessage(message, type = 'success') {
+function updateSumoRoom(data) {
+    const { players, ready } = data;
+    
+    // Update player displays
+    players.forEach((player, index) => {
+        const playerDiv = document.getElementById(`sumoPlayer${index + 1}`);
+        if (playerDiv) {
+            playerDiv.querySelector('.player-name').textContent = player.name;
+            playerDiv.querySelector('.click-count').textContent = '0 clicks';
+            playerDiv.querySelector('.click-progress').style.width = '0%';
+        }
+    });
+    
+    // Update status
+    const status = document.getElementById('sumoStatus');
+    if (ready.length === 2) {
+        status.textContent = 'Both players ready! Starting soon...';
+        document.getElementById('startSumoBtn').style.display = 'none';
+    } else if (ready.length === 1) {
+        status.textContent = 'Waiting for opponent to ready up...';
+    } else {
+        status.textContent = 'Waiting for players...';
+    }
+}
+
+function showMessage(text, type = 'info') {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
-    messageDiv.textContent = message;
+    messageDiv.textContent = text;
     
     const container = document.getElementById('messageContainer');
     container.appendChild(messageDiv);

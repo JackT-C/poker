@@ -772,4 +772,191 @@ body {
     .chip-packages {
         grid-template-columns: 1fr;
     }
+    
+    .sumo-players {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .sumo-vs {
+        transform: rotate(90deg);
+    }
+}
+
+/* Sumo Clicker Game */
+.sumo-arena {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 40px;
+    background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%);
+    border: 5px solid #d4af37;
+    border-radius: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+}
+
+.sumo-status {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.status-text {
+    font-size: 1.8em;
+    color: #d4af37;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    margin-bottom: 15px;
+}
+
+.sumo-timer {
+    font-size: 4em;
+    color: #fff;
+    font-weight: bold;
+    text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+    animation: pulse 1s infinite;
+}
+
+.sumo-players {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    margin: 40px 0;
+    gap: 30px;
+}
+
+.sumo-player {
+    flex: 1;
+    text-align: center;
+    padding: 30px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    border: 3px solid rgba(212, 175, 55, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sumo-player.active {
+    border-color: #2ecc71;
+    box-shadow: 0 0 30px rgba(46, 204, 113, 0.5);
+}
+
+.sumo-wrestler {
+    font-size: 5em;
+    margin-bottom: 15px;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.sumo-player .player-name {
+    font-size: 1.4em;
+    color: #d4af37;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.click-count {
+    font-size: 2.5em;
+    color: #2ecc71;
+    font-weight: bold;
+    margin: 15px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.click-bar {
+    width: 100%;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 15px;
+    overflow: hidden;
+    margin-top: 15px;
+    border: 2px solid rgba(212, 175, 55, 0.3);
+}
+
+.click-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+
+.sumo-vs {
+    font-size: 3em;
+    color: #d4af37;
+    font-weight: bold;
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+    animation: pulse 2s infinite;
+}
+
+.sumo-click-button {
+    display: block;
+    width: 100%;
+    max-width: 500px;
+    margin: 40px auto;
+    padding: 40px;
+    font-size: 2.5em;
+    font-weight: bold;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: #fff;
+    border: 5px solid #d4af37;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: 0 10px 30px rgba(231, 76, 60, 0.5);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.sumo-click-button:not(:disabled):hover {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(231, 76, 60, 0.7);
+}
+
+.sumo-click-button:not(:disabled):active {
+    transform: scale(0.95);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.5);
+}
+
+.sumo-click-button:disabled {
+    background: linear-gradient(135deg, #555 0%, #333 100%);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-text {
+    display: block;
+    font-size: 1em;
+}
+
+.btn-subtitle {
+    display: block;
+    font-size: 0.4em;
+    margin-top: 10px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sumo-result {
+    text-align: center;
+    font-size: 2.5em;
+    font-weight: bold;
+    margin-top: 30px;
+    padding: 30px;
+    border-radius: 20px;
+    animation: slideIn 0.5s ease-out;
+}
+
+.sumo-result.winner {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.2);
+    border: 3px solid #2ecc71;
+}
+
+.sumo-result.loser {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.2);
+    border: 3px solid #e74c3c;
 }
