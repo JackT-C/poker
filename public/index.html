@@ -9,6 +9,21 @@
     <script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="casino-logo">🎰</div>
+            <h1>Royal Casino</h1>
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+            </div>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loadingProgress"></div>
+            </div>
+            <p class="loading-text" id="loadingText">Loading games...</p>
+        </div>
+    </div>
+    
     <div id="app">
         <!-- Lobby Screen -->
         <div id="lobby" class="screen active">
@@ -104,15 +119,61 @@
                 </div>
             </div>
             
-            <div class="poker-table">
-                <div class="pot-container">
-                    <div class="pot-label">POT</div>
-                    <div id="pot" class="pot-amount">$0</div>
+            <div class="poker-content">
+                <div class="poker-table">
+                    <div class="pot-container">
+                        <div class="pot-label">POT</div>
+                        <div id="pot" class="pot-amount">$0</div>
+                    </div>
+                    
+                    <div id="communityCards" class="community-cards"></div>
+                    
+                    <div id="pokerPlayers" class="players-container"></div>
                 </div>
                 
-                <div id="communityCards" class="community-cards"></div>
-                
-                <div id="pokerPlayers" class="players-container"></div>
+                <div class="poker-hand-guide">
+                    <h3>🃏 Hand Rankings</h3>
+                    <div class="hand-rank">
+                        <span class="rank-name">Royal Flush</span>
+                        <span class="rank-cards">A♠ K♠ Q♠ J♠ 10♠</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Straight Flush</span>
+                        <span class="rank-cards">9♥ 8♥ 7♥ 6♥ 5♥</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Four of a Kind</span>
+                        <span class="rank-cards">K♣ K♦ K♥ K♠ 3♣</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Full House</span>
+                        <span class="rank-cards">Q♠ Q♥ Q♦ 4♣ 4♥</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Flush</span>
+                        <span class="rank-cards">A♦ J♦ 9♦ 5♦ 3♦</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Straight</span>
+                        <span class="rank-cards">10♣ 9♠ 8♥ 7♦ 6♣</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Three of a Kind</span>
+                        <span class="rank-cards">7♠ 7♦ 7♣ K♥ 2♠</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">Two Pair</span>
+                        <span class="rank-cards">A♣ A♥ 8♠ 8♦ 5♣</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">One Pair</span>
+                        <span class="rank-cards">10♥ 10♦ K♠ 6♣ 2♥</span>
+                    </div>
+                    <div class="hand-rank">
+                        <span class="rank-name">High Card</span>
+                        <span class="rank-cards">A♠ Q♦ 9♣ 5♥ 3♠</span>
+                    </div>
+                </div>
             </div>
             
             <div class="turn-indicator-container">

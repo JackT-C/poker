@@ -12,6 +12,100 @@ body {
     overflow-x: hidden;
 }
 
+/* Loading Screen */
+.loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    transition: opacity 0.5s, visibility 0.5s;
+}
+
+.loading-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loading-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.casino-logo {
+    font-size: 100px;
+    margin-bottom: 20px;
+    animation: logoFloat 2s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.loading-content h1 {
+    font-size: 3em;
+    background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 50%, #d4af37 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 30px;
+    text-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+}
+
+.loading-spinner {
+    margin: 30px 0;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto;
+    border: 5px solid rgba(212, 175, 55, 0.2);
+    border-top-color: #d4af37;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.loading-progress {
+    height: 100%;
+    background: linear-gradient(90deg, #d4af37 0%, #f4e5a1 50%, #d4af37 100%);
+    border-radius: 10px;
+    width: 0%;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1em;
+    margin-top: 15px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
 #app {
     max-width: 1400px;
     margin: 0 auto;
@@ -248,10 +342,19 @@ body {
     font-weight: bold;
 }
 
+/* Poker Content Layout */
+.poker-content {
+    display: flex;
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    align-items: flex-start;
+}
+
 /* Poker Table */
 .poker-table {
     position: relative;
-    width: 100%;
+    flex: 1;
     max-width: 900px;
     margin: 0 auto 30px;
     padding: 60px;
@@ -260,6 +363,68 @@ body {
     border-radius: 50%;
     box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5), 0 20px 60px rgba(0, 0, 0, 0.7);
     aspect-ratio: 1.5;
+}
+
+/* Poker Hand Guide */
+.poker-hand-guide {
+    flex-shrink: 0;
+    width: 280px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 3px solid #d4af37;
+    border-radius: 15px;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.poker-hand-guide h3 {
+    text-align: center;
+    color: #d4af37;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+.hand-rank {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid #d4af37;
+    transition: all 0.3s;
+}
+
+.hand-rank:hover {
+    background: rgba(212, 175, 55, 0.2);
+    transform: translateX(5px);
+}
+
+.rank-name {
+    display: block;
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+}
+
+.rank-cards {
+    display: block;
+    color: #fff;
+    font-size: 1.1em;
+    letter-spacing: 2px;
+    font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 1200px) {
+    .poker-content {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .poker-hand-guide {
+        width: 100%;
+        max-width: 600px;
+    }
 }
 
 .pot-container {

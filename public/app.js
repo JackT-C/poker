@@ -9,14 +9,59 @@ let selectedPackage = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    initializeEventListeners();
-    loadPlayerData();
+    showLoadingScreen();
     
-    // Initialize Stripe
-    if (window.Stripe) {
-        stripe = Stripe('pk_test_51SZsV8AOuELikwMgJJ9s11lkxtCaa19gBInvYx33SXtzTWTEEfkluMGAkiLtCCopQ9WpxUPtL4RwPNv4KsEMBUXX00mBF0Dseg');
-    }
+    setTimeout(() => {
+        initializeEventListeners();
+        loadPlayerData();
+        
+        // Initialize Stripe
+        if (window.Stripe) {
+            stripe = Stripe('pk_test_51SZsV8AOuELikwMgJJ9s11lkxtCaa19gBInvYx33SXtzTWTEEfkluMGAkiLtCCopQ9WpxUPtL4RwPNv4KsEMBUXX00mBF0Dseg');
+        }
+        
+        hideLoadingScreen();
+    }, 2000);
 });
+
+function showLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const loadingProgress = document.getElementById('loadingProgress');
+    const loadingText = document.getElementById('loadingText');
+    
+    const messages = [
+        'Loading games...',
+        'Shuffling decks...',
+        'Setting up tables...',
+        'Preparing casino...',
+        'Almost ready...'
+    ];
+    
+    let progress = 0;
+    let messageIndex = 0;
+    
+    const interval = setInterval(() => {
+        progress += 20;
+        loadingProgress.style.width = progress + '%';
+        
+        if (messageIndex < messages.length) {
+            loadingText.textContent = messages[messageIndex];
+            messageIndex++;
+        }
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+        }
+    }, 400);
+}
+
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    loadingScreen.classList.add('hidden');
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+    }, 500);
+}
 
 function initializeEventListeners() {
     // Lobby
