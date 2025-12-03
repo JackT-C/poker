@@ -100,15 +100,13 @@ function initializeEventListeners() {
         socket.emit('startPoker', currentRoom);
     });
     
-    document.getElementById('foldBtn').addEventListener('click', () => {
-        socket.emit('pokerAction', { roomId: currentRoom, action: 'fold' });
-    });
-    
-    document.getElementById('callBtn').addEventListener('click', () => {
-        socket.emit('pokerAction', { roomId: currentRoom, action: 'call' });
-    });
-    
-    document.getElementById('raiseBtn').addEventListener('click', () => {
+document.getElementById('foldBtn').addEventListener('click', () => {
+    playSound('fold');
+    socket.emit('pokerAction', { roomId: currentRoom, action: 'fold' });
+});document.getElementById('callBtn').addEventListener('click', () => {
+    playSound('chip');
+    socket.emit('pokerAction', { roomId: currentRoom, action: 'call' });
+});    document.getElementById('raiseBtn').addEventListener('click', () => {
         const amount = parseInt(document.getElementById('raiseAmount').value) || 0;
         if (amount < 10) {
             showMessage('Minimum raise is $10', 'error');
@@ -117,7 +115,10 @@ function initializeEventListeners() {
         socket.emit('pokerAction', { roomId: currentRoom, action: 'raise', amount });
     });
     
-    document.getElementById('addPokerBotBtn').addEventListener('click', () => {
+document.getElementById('allInBtn').addEventListener('click', () => {
+    playSound('allin');
+    socket.emit('pokerAction', { roomId: currentRoom, action: 'allin' });
+});    document.getElementById('addPokerBotBtn').addEventListener('click', () => {
         console.log('Adding poker bot to room:', currentRoom);
         socket.emit('addBot', { roomId: currentRoom, game: 'poker' });
     });
@@ -269,6 +270,7 @@ socket.on('gameUpdate', (data) => {
 });
 
 socket.on('roundAdvance', (data) => {
+    playSound('card');
     updatePokerRoom(data.room);
     communityCards = data.room.communityCards;
     displayCommunityCards(data.room.communityCards);
@@ -276,6 +278,19 @@ socket.on('roundAdvance', (data) => {
 });
 
 socket.on('gameEnd', (data) => {
+    // Determine if current player won or lost
+    const currentPlayerData = data.allHands.find(p => p.id === socket.id);
+    const isWinner = data.winner === currentPlayerData?.name;
+    
+    // Play sound and show result image
+    if (isWinner) {
+        playSound('win');
+        showResultImage('win');
+    } else {
+        playSound('lose');
+        showResultImage('lose');
+    }
+    
     showMessage(`${data.winner} wins the pot of $${data.pot}!`, 'success');
     
     // Display all players' hands
@@ -882,6 +897,33 @@ function showMessage(text, type = 'info') {
 
 function updatePlayerChips() {
     document.getElementById('playerChips').textContent = playerChips;
+}
+
+function showResultImage(result) {
+    const overlay = document.createElement('div');
+    overlay.className = 'result-overlay';
+    
+    const img = document.createElement('img');
+    if (result === 'win') {
+        img.src = '/imgs/Win screeen img.jpg';
+        img.alt = 'You Win!';
+    } else {
+        img.src = '/imgs/lose screen.png';
+        img.alt = 'You Lost';
+    }
+    img.className = 'result-image';
+    
+    overlay.appendChild(img);
+    document.body.appendChild(overlay);
+    
+    // Fade in
+    setTimeout(() => overlay.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 500);
+    }, 3000);
 }
 
 function savePlayerData() {

@@ -119,19 +119,9 @@
                 </div>
             </div>
             
-            <div class="poker-content">
-                <div class="poker-table">
-                    <div class="pot-container">
-                        <div class="pot-label">POT</div>
-                        <div id="pot" class="pot-amount">$0</div>
-                    </div>
-                    
-                    <div id="communityCards" class="community-cards"></div>
-                    
-                    <div id="pokerPlayers" class="players-container"></div>
-                </div>
-                
-                <div class="poker-hand-guide">
+            <div class="poker-table-section">
+                <div class="poker-content">
+                    <div class="poker-hand-guide">
                     <h3>🃏 Hand Rankings</h3>
                     <div class="hand-rank">
                         <span class="rank-name">Royal Flush</span>
@@ -173,6 +163,17 @@
                         <span class="rank-name">High Card</span>
                         <span class="rank-cards">A♠ Q♦ 9♣ 5♥ 3♠</span>
                     </div>
+                    
+                    <div class="poker-table">
+                        <div class="pot-container">
+                            <div class="pot-label">POT</div>
+                            <div id="pot" class="pot-amount">$0</div>
+                        </div>
+                        
+                        <div id="communityCards" class="community-cards"></div>
+                        
+                        <div id="pokerPlayers" class="players-container"></div>
+                    </div>
                 </div>
             </div>
             
@@ -192,6 +193,7 @@
                 <button id="callBtn" class="btn btn-primary">Call</button>
                 <button id="raiseBtn" class="btn btn-success">Raise</button>
                 <input type="number" id="raiseAmount" placeholder="Raise amount" min="10" step="10">
+                <button id="allInBtn" class="btn btn-warning">All In</button>
             </div>
             
             <div class="bot-controls">

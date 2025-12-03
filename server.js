@@ -259,6 +259,7 @@ function processBotPokerTurn(room, roomId) {
             
             // Prepare all players' hands for reveal
             const allHands = room.players.map(p => ({
+                id: p.id,
                 name: p.name,
                 hand: p.hand,
                 folded: p.folded
@@ -874,6 +875,22 @@ io.on('connection', (socket) => {
             player.bet = raiseAmount;
             room.pot += totalAmount;
             room.currentBet = raiseAmount;
+        } else if (action === 'allin') {
+            // Player bets all their chips
+            const allInAmount = player.chips + player.bet;
+            const chipsToAdd = player.chips;
+            player.chips = 0;
+            player.bet = allInAmount;
+            room.pot += chipsToAdd;
+            
+            // Update current bet if all-in is higher
+            if (allInAmount > room.currentBet) {
+                room.currentBet = allInAmount;
+            }
+            
+            io.to(roomId).emit('chatSystem', {
+                message: `${player.name} goes ALL IN with $${allInAmount}! 🔥`
+            });
         }
         
         // Move to next player (skip folded players)
@@ -890,6 +907,7 @@ io.on('connection', (socket) => {
             
             // Prepare all players' hands for reveal
             const allHands = room.players.map(p => ({
+                id: p.id,
                 name: p.name,
                 hand: p.hand,
                 folded: p.folded
@@ -1282,6 +1300,7 @@ function advancePokerRound(room, roomId) {
         
         // Prepare all players' hands with evaluations for reveal
         const allHands = room.players.map(p => ({
+            id: p.id,
             name: p.name,
             hand: p.hand,
             folded: p.folded,
