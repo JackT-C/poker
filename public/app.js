@@ -100,13 +100,15 @@ function initializeEventListeners() {
         socket.emit('startPoker', currentRoom);
     });
     
-document.getElementById('foldBtn').addEventListener('click', () => {
-    playSound('fold');
-    socket.emit('pokerAction', { roomId: currentRoom, action: 'fold' });
-});document.getElementById('callBtn').addEventListener('click', () => {
-    playSound('chip');
-    socket.emit('pokerAction', { roomId: currentRoom, action: 'call' });
-});    document.getElementById('raiseBtn').addEventListener('click', () => {
+    document.getElementById('foldBtn').addEventListener('click', () => {
+        socket.emit('pokerAction', { roomId: currentRoom, action: 'fold' });
+    });
+    
+    document.getElementById('callBtn').addEventListener('click', () => {
+        socket.emit('pokerAction', { roomId: currentRoom, action: 'call' });
+    });
+    
+    document.getElementById('raiseBtn').addEventListener('click', () => {
         const amount = parseInt(document.getElementById('raiseAmount').value) || 0;
         if (amount < 10) {
             showMessage('Minimum raise is $10', 'error');
@@ -115,10 +117,11 @@ document.getElementById('foldBtn').addEventListener('click', () => {
         socket.emit('pokerAction', { roomId: currentRoom, action: 'raise', amount });
     });
     
-document.getElementById('allInBtn').addEventListener('click', () => {
-    playSound('allin');
-    socket.emit('pokerAction', { roomId: currentRoom, action: 'allin' });
-});    document.getElementById('addPokerBotBtn').addEventListener('click', () => {
+    document.getElementById('allInBtn').addEventListener('click', () => {
+        socket.emit('pokerAction', { roomId: currentRoom, action: 'allin' });
+    });
+    
+    document.getElementById('addPokerBotBtn').addEventListener('click', () => {
         console.log('Adding poker bot to room:', currentRoom);
         socket.emit('addBot', { roomId: currentRoom, game: 'poker' });
     });
@@ -270,7 +273,6 @@ socket.on('gameUpdate', (data) => {
 });
 
 socket.on('roundAdvance', (data) => {
-    playSound('card');
     updatePokerRoom(data.room);
     communityCards = data.room.communityCards;
     displayCommunityCards(data.room.communityCards);
@@ -282,12 +284,10 @@ socket.on('gameEnd', (data) => {
     const currentPlayerData = data.allHands.find(p => p.id === socket.id);
     const isWinner = data.winner === currentPlayerData?.name;
     
-    // Play sound and show result image
+    // Show result image
     if (isWinner) {
-        playSound('win');
         showResultImage('win');
     } else {
-        playSound('lose');
         showResultImage('lose');
     }
     
