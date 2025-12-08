@@ -351,35 +351,35 @@ body {
 .poker-content {
     display: flex;
     gap: 30px;
-    max-width: 100%;
+    max-width: 1600px;
     margin: 0 auto 30px;
     align-items: flex-start;
     justify-content: center;
     padding: 0 20px;
-    flex-wrap: wrap;
 }
 
 /* Poker Hand Guide */
 .poker-hand-guide {
     flex-shrink: 0;
-    width: 100%;
-    max-width: 350px;
+    width: 300px;
+    order: 1;
     background: rgba(0, 0, 0, 0.7);
     border: 3px solid #d4af37;
     border-radius: 15px;
     padding: 20px;
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    max-height: 650px;
+    max-height: 700px;
     overflow-y: auto;
 }
 
 /* Poker Table - Center */
 .poker-table {
     position: relative;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto 30px;
+    flex: 1;
+    max-width: 1000px;
+    order: 2;
+    margin: 0;
     padding: 60px;
     background: radial-gradient(ellipse at center, #0a4d0a 0%, #063506 100%);
     border: 15px solid #8b4513;
@@ -442,19 +442,22 @@ body {
     border-radius: 10px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
     .poker-content {
         flex-direction: column;
         align-items: center;
     }
     
     .poker-hand-guide {
-        max-width: 100%;
+        width: 100%;
+        max-width: 600px;
         max-height: none;
+        order: 2;
     }
     
     .poker-table {
         width: 100%;
+        order: 1;
     }
 }
 
