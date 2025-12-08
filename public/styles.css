@@ -350,36 +350,36 @@ body {
 /* Poker Content Layout */
 .poker-content {
     display: flex;
-    gap: 40px;
-    max-width: 1600px;
-    margin: 0 auto;
+    gap: 30px;
+    max-width: 100%;
+    margin: 0 auto 30px;
     align-items: flex-start;
-    justify-content: space-between;
-    padding: 20px;
+    justify-content: center;
+    padding: 0 20px;
+    flex-wrap: wrap;
 }
 
-/* Poker Hand Guide - Left Side */
+/* Poker Hand Guide */
 .poker-hand-guide {
     flex-shrink: 0;
-    width: 280px;
-    min-width: 280px;
+    width: 100%;
+    max-width: 350px;
     background: rgba(0, 0, 0, 0.7);
     border: 3px solid #d4af37;
     border-radius: 15px;
     padding: 20px;
     backdrop-filter: blur(10px);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    max-height: 700px;
+    max-height: 650px;
     overflow-y: auto;
 }
 
 /* Poker Table - Center */
 .poker-table {
     position: relative;
-    flex: 1;
-    min-width: 700px;
-    max-width: 900px;
-    margin: 0;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto 30px;
     padding: 60px;
     background: radial-gradient(ellipse at center, #0a4d0a 0%, #063506 100%);
     border: 15px solid #8b4513;
@@ -442,24 +442,19 @@ body {
     border-radius: 10px;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
     .poker-content {
         flex-direction: column;
         align-items: center;
-        gap: 30px;
     }
     
     .poker-hand-guide {
-        width: 100%;
-        max-width: 700px;
+        max-width: 100%;
         max-height: none;
-        order: 2;
     }
     
     .poker-table {
-        min-width: auto;
         width: 100%;
-        order: 1;
     }
 }
 
